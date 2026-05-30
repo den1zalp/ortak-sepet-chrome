@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Ortak Sepet</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <main class="app">
+      <header class="header">
+        <h1>Ortak Sepet</h1>
+      </header>
+
+      <button id="addCurrentProductBtn" class="primary-button">
+        Bu Ürünü Ekle
+      </button>
+
+      <button
+        id="categorizeProductsBtn"
+        class="secondary-button compact-button"
+      >
+        Ürünleri Kategorize Et
+      </button>
+
+      <button
+        id="installmentProductsBtn"
+        class="secondary-button compact-button"
+      >
+        Taksit Olanlar
+      </button>
+
+      <button id="updateAllPricesBtn" class="secondary-button compact-button">
+        Tüm Fiyatları Güncelle
+      </button>
+
+      <p id="status" class="status"></p>
+
+      <section class="summary">
+        <div>
+          <span class="summary-label">Ürün sayısı</span>
+          <strong id="itemCount">0</strong>
+        </div>
+
+        <div>
+          <span class="summary-label">Genel toplam</span>
+          <strong id="totalPrice">0,00 TL</strong>
+        </div>
+
+        <div>
+          <span class="summary-label">Seçili toplam</span>
+          <strong id="selectedTotalPrice">0,00 TL</strong>
+        </div>
+      </section>
+
+      <section class="cart-section">
+        <h2>Sepet</h2>
+        <div id="cartItems"></div>
+      </section>
+
+      <button id="clearCartBtn" class="secondary-button">Sepeti Temizle</button>
+    </main>
+
+    <script src="browser-polyfill.js"></script>
+    <script src="popup.js"></script>
+  </body>
+</html>

@@ -1,0 +1,46 @@
+{
+  "manifest_version": 3,
+  "name": "Ortak Sepet",
+  "version": "0.1.4",
+  "description": "Türkiye odaklı ortak alışveriş sepeti.",
+  "permissions": ["storage", "tabs"],
+  "host_permissions": [
+    "*://*.trendyol.com/*",
+    "*://*.hepsiburada.com/*",
+    "*://*.n11.com/*",
+    "*://*.amazon.com.tr/*",
+    "*://*.teknosa.com/*",
+    "*://*.vatanbilgisayar.com/*",
+    "*://*.mediamarkt.com.tr/*",
+    "*://*.pazarama.com/*",
+    "*://*.ciceksepeti.com/*",
+    "*://*.idefix.com/*",
+    "*://*.dr.com.tr/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "Ortak Sepet",
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.trendyol.com/*",
+        "*://*.hepsiburada.com/*",
+        "*://*.n11.com/*",
+        "*://*.amazon.com.tr/*",
+        "*://*.teknosa.com/*",
+        "*://*.vatanbilgisayar.com/*",
+        "*://*.mediamarkt.com.tr/*",
+        "*://*.pazarama.com/*",
+        "*://*.ciceksepeti.com/*",
+        "*://*.idefix.com/*",
+        "*://*.dr.com.tr/*"
+      ],
+      "js": ["browser-polyfill.js", "content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
