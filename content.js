@@ -745,8 +745,142 @@ function parseMetaProduct() {
     url: window.location.href,
   };
 }
+function findTrendyolMainPrice() {
+  const titleElement =
+    document.querySelector("h1") ||
+    document.querySelector(".pr-new-br") ||
+    document.querySelector("[class*='product-title']");
 
+  const titleRect = titleElement ? titleElement.getBoundingClientRect() : null;
+
+  const elements = Array.from(
+    document.querySelectorAll("span, div, p, strong"),
+  );
+
+  const candidates = elements
+    .filter((element) => {
+      if (!isVisibleElement(element)) return false;
+
+      const text = cleanText(element.textContent);
+
+      if (!looksLikeTryPrice(text)) return false;
+      if (hasChildWithPriceText(element)) return false;
+      if (text.length > 90) return false;
+
+      const rect = element.getBoundingClientRect();
+
+      if (titleRect) {
+        if (rect.top < titleRect.bottom - 100) return false;
+        if (rect.top > titleRect.bottom + 520) return false;
+      }
+
+      if (rect.left < window.innerWidth * 0.25) return false;
+      if (rect.left > window.innerWidth * 0.85) return false;
+
+      return true;
+    })
+    .map((element) => {
+      const rect = element.getBoundingClientRect();
+      const style = window.getComputedStyle(element);
+      const fontSize = Number.parseFloat(style.fontSize) || 0;
+      const fontWeight = Number.parseInt(style.fontWeight, 10) || 400;
+      const text = cleanText(element.textContent);
+
+      let score = 0;
+
+      score += fontSize * 14;
+      score += fontWeight / 60;
+
+      if (titleRect) {
+        const distanceFromTitle = Math.abs(rect.top - titleRect.bottom);
+        score += Math.max(0, 280 - distanceFromTitle);
+      }
+
+      if (/sepette|indirimli|fiyat/i.test(text)) score += 60;
+
+      if (
+        /taksit|kargo|teslimat|kupon|kampanya|puan|favori|değerlendirme|degerlendirme|satıcı|satici|ay|başlayan|baslayan/i.test(
+          text,
+        )
+      ) {
+        score -= 350;
+      }
+
+      return {
+        text,
+        score,
+      };
+    })
+    .sort((a, b) => b.score - a.score);
+
+  return candidates[0]?.text || "";
+}
+function findTrendyolMainImage() {
+  const title =
+    cleanText(getText(".pr-new-br")) ||
+    cleanText(getText("h1")) ||
+    cleanText(getAttr("meta[property='og:title']", "content"));
+
+  const normalizedTitle = normalizeForBasicSearch(title);
+  const images = Array.from(document.querySelectorAll("img"));
+
+  const scoredImages = images
+    .filter((img) => {
+      const src = img.currentSrc || img.src || img.getAttribute("src") || "";
+      const alt = img.getAttribute("alt") || "";
+
+      if (!src) return false;
+      if (/logo|icon|sprite|placeholder|loading|badge/i.test(src)) return false;
+      if (/logo|icon|sprite|placeholder|loading|badge/i.test(alt)) return false;
+
+      const rect = img.getBoundingClientRect();
+
+      if (rect.width < 100 || rect.height < 100) return false;
+
+      return true;
+    })
+    .map((img) => {
+      const src = img.currentSrc || img.src || img.getAttribute("src") || "";
+      const alt = cleanText(img.getAttribute("alt") || "");
+      const normalizedAlt = normalizeForBasicSearch(alt);
+      const rect = img.getBoundingClientRect();
+
+      let score = 0;
+
+      score += rect.width + rect.height;
+
+      if (rect.left < window.innerWidth * 0.55) score += 200;
+      if (rect.top < window.innerHeight * 0.9) score += 120;
+
+      if (/cdn\.dsmcdn\.com|ty\d+|product|urun|ürün|images|media/i.test(src)) {
+        score += 160;
+      }
+
+      if (
+        normalizedTitle &&
+        normalizedAlt &&
+        (normalizedTitle.includes(normalizedAlt.slice(0, 25)) ||
+          normalizedAlt.includes(normalizedTitle.slice(0, 25)))
+      ) {
+        score += 250;
+      }
+
+      return {
+        src,
+        score,
+      };
+    })
+    .sort((a, b) => b.score - a.score);
+
+  return (
+    scoredImages[0]?.src ||
+    getAttr("meta[property='og:image']", "content") ||
+    getAttr("meta[name='twitter:image']", "content")
+  );
+}
 function parseTrendyol() {
+  const mainPrice = findTrendyolMainPrice();
+
   return {
     site: "Trendyol",
     title:
@@ -754,14 +888,13 @@ function parseTrendyol() {
       cleanText(getText("h1")) ||
       cleanText(getAttr("meta[property='og:title']", "content")),
     price:
+      cleanPrice(mainPrice) ||
       cleanPrice(getText(".prc-dsc")) ||
       cleanPrice(getText(".prc-slg")) ||
-      cleanPrice(getText(".product-price-container span")) ||
-      cleanPrice(getAttr("meta[property='product:price:amount']", "content")),
-    image:
-      getAttr(".base-product-image img", "src") ||
-      getAttr(".gallery-modal-content img", "src") ||
-      getAttr("meta[property='og:image']", "content"),
+      cleanPrice(getText("[class*='price']")) ||
+      cleanPrice(getAttr("meta[property='product:price:amount']", "content")) ||
+      cleanPrice(getAttr("meta[property='og:price:amount']", "content")),
+    image: findTrendyolMainImage(),
     url: window.location.href,
   };
 }
