@@ -22,6 +22,10 @@ Bu sürüm Google Chrome için hazırlanmıştır.
 - Taksit bilgisini ürün sayfasındaki görünür bilgilerden okumaya çalışma
 - Sepet verilerini tarayıcıda lokal olarak saklama
 
+## Demo
+
+![Ortak Sepet Chrome demo](assets/screenshots/demo.gif)
+
 ## Desteklenen Siteler
 
 - Amazon Türkiye
