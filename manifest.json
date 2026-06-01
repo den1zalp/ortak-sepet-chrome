@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Ortak Sepet",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "Türkiye odaklı ortak alışveriş sepeti.",
   "permissions": ["storage", "tabs"],
   "host_permissions": [

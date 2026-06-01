@@ -831,7 +831,8 @@ async function renderCart() {
   if (items.length === 0) {
     const empty = document.createElement("div");
     empty.className = "empty";
-    empty.textContent = "Sepet boş kanka. Bir ürün sayfasına girip ekle.";
+    empty.textContent =
+      "Sepet boş. Desteklenen bir ürün sayfasına giderek ürün ekleyebilirsiniz.";
     cartItemsEl.appendChild(empty);
     return;
   }
