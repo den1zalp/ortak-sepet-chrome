@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Ortak Sepet",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Türkiye odaklı ortak alışveriş sepeti.",
   "permissions": ["storage", "tabs"],
   "host_permissions": [
@@ -17,12 +17,24 @@
     "*://*.idefix.com/*",
     "*://*.dr.com.tr/*"
   ],
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
   "background": {
     "service_worker": "background.js"
   },
   "action": {
     "default_title": "Ortak Sepet",
-    "default_popup": "popup.html"
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png",
+      "48": "icons/icon-48.png",
+      "128": "icons/icon-128.png"
+    }
   },
   "content_scripts": [
     {
