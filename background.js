@@ -13,6 +13,23 @@ async function saveCartItems(items) {
   });
 }
 
+async function updateBadge() {
+  const items = await getCartItems();
+
+  const totalCount = items.reduce((sum, item) => {
+    const quantity = item.quantity && item.quantity > 0 ? item.quantity : 1;
+    return sum + quantity;
+  }, 0);
+
+  await browser.action.setBadgeText({
+    text: totalCount === 0 ? "" : totalCount > 99 ? "99+" : String(totalCount),
+  });
+
+  await browser.action.setBadgeBackgroundColor({
+    color: "#E53935",
+  });
+}
+
 function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -307,3 +324,14 @@ browser.runtime.onMessage.addListener((message) => {
 
   return false;
 });
+
+browser.storage.onChanged.addListener((changes, areaName) => {
+  if (areaName === "local" && changes[CART_KEY]) {
+    updateBadge();
+  }
+});
+
+browser.runtime.onInstalled.addListener(updateBadge);
+browser.runtime.onStartup.addListener(updateBadge);
+
+updateBadge();
