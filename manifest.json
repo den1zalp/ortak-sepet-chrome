@@ -1,9 +1,12 @@
 {
   "manifest_version": 3,
   "name": "Ortak Sepet",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "Türkiye odaklı ortak alışveriş sepeti.",
-  "permissions": ["storage", "tabs"],
+  "permissions": [
+    "storage",
+    "tabs"
+  ],
   "host_permissions": [
     "*://*.trendyol.com/*",
     "*://*.hepsiburada.com/*",
@@ -15,7 +18,9 @@
     "*://*.pazarama.com/*",
     "*://*.ciceksepeti.com/*",
     "*://*.idefix.com/*",
-    "*://*.dr.com.tr/*"
+    "*://*.dr.com.tr/*",
+    "*://*.itopya.com/*",
+    "*://*.incehesap.com/*"
   ],
   "icons": {
     "16": "icons/icon-16.png",
@@ -49,9 +54,14 @@
         "*://*.pazarama.com/*",
         "*://*.ciceksepeti.com/*",
         "*://*.idefix.com/*",
-        "*://*.dr.com.tr/*"
+        "*://*.dr.com.tr/*",
+        "*://*.itopya.com/*",
+        "*://*.incehesap.com/*"
       ],
-      "js": ["browser-polyfill.js", "content.js"],
+      "js": [
+        "browser-polyfill.js",
+        "content.js"
+      ],
       "run_at": "document_idle"
     }
   ]
