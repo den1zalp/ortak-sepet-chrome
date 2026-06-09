@@ -1,6 +1,7 @@
 importScripts("browser-polyfill.js");
 
 const CART_KEY = "ortakSepetItems";
+const LANGUAGE_KEY = "ortakSepetLanguage";
 
 async function getCartItems() {
   const result = await browser.storage.local.get(CART_KEY);
@@ -11,6 +12,153 @@ async function saveCartItems(items) {
   await browser.storage.local.set({
     [CART_KEY]: items,
   });
+}
+
+function getQuantity(item) {
+  return item.quantity && item.quantity > 0 ? item.quantity : 1;
+}
+
+function normalizeUrl(url) {
+  if (!url) return "";
+
+  try {
+    const parsedUrl = new URL(url);
+    parsedUrl.hash = "";
+
+    const removableParams = [
+      "utm_source",
+      "utm_medium",
+      "utm_campaign",
+      "utm_term",
+      "utm_content",
+      "trackingId",
+      "gclid",
+      "fbclid",
+      "yclid",
+      "ttclid",
+      "msclkid",
+    ];
+
+    for (const param of removableParams) {
+      parsedUrl.searchParams.delete(param);
+    }
+
+    return parsedUrl.toString();
+  } catch {
+    return url;
+  }
+}
+
+function detectCurrencyFromPrice(priceText) {
+  const text = String(priceText || "");
+
+  if (/£|GBP/i.test(text)) {
+    return "GBP";
+  }
+
+  return "TRY";
+}
+
+async function addProductToCart(product) {
+  if (!product || !product.title || !product.price) {
+    throw new Error("Ürün bilgisi okunamadı.");
+  }
+
+  const items = await getCartItems();
+  const productUrl = normalizeUrl(product.url);
+
+  const existingItem = items.find((item) => {
+    return normalizeUrl(item.url) === productUrl;
+  });
+
+  if (existingItem) {
+    existingItem.quantity = getQuantity(existingItem) + 1;
+    existingItem.selected = true;
+    existingItem.title = product.title || existingItem.title;
+
+    if (existingItem.manualPrice === true) {
+      existingItem.detectedPrice = product.price || existingItem.detectedPrice;
+    } else {
+      existingItem.price = product.price || existingItem.price;
+    }
+
+    existingItem.image = product.image || existingItem.image;
+    existingItem.currency = product.currency || detectCurrencyFromPrice(existingItem.price);
+    existingItem.currencySymbol = product.currencySymbol || (existingItem.currency === "GBP" ? "£" : "TL");
+    existingItem.region = product.region || existingItem.region || (existingItem.currency === "GBP" ? "UK" : "TR");
+    existingItem.installmentAvailable = product.installmentAvailable;
+    existingItem.installmentText = product.installmentText;
+    existingItem.shippingAvailable = product.shippingAvailable;
+    existingItem.freeShipping = product.freeShipping;
+    existingItem.shippingText = product.shippingText;
+    existingItem.shippingSource = product.shippingSource;
+    existingItem.shippingConfidence = product.shippingConfidence;
+    existingItem.updatedAt = new Date().toISOString();
+
+    await saveCartItems(items);
+    await updateBadge();
+    return;
+  }
+
+  const productCurrency = product.currency || detectCurrencyFromPrice(product.price);
+
+  items.push({
+    id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    ...product,
+    currency: productCurrency,
+    currencySymbol: product.currencySymbol || (productCurrency === "GBP" ? "£" : "TL"),
+    region: product.region || (productCurrency === "GBP" ? "UK" : "TR"),
+    quantity: 1,
+    selected: true,
+    category: null,
+    addedAt: new Date().toISOString(),
+  });
+
+  await saveCartItems(items);
+  await updateBadge();
+}
+
+async function addCurrentTabProduct(tabId) {
+  if (!tabId) return;
+
+  const response = await browser.tabs.sendMessage(tabId, {
+    type: "GET_PRODUCT",
+  });
+
+  if (!response || !response.ok) {
+    throw new Error(response?.error || "Bu sayfadan ürün okunamadı.");
+  }
+
+  await addProductToCart(response.product);
+}
+
+async function getLanguage() {
+  const result = await browser.storage.local.get(LANGUAGE_KEY);
+  return result[LANGUAGE_KEY] || "tr";
+}
+
+async function getContextMenuTitle() {
+  const language = await getLanguage();
+  return language === "en" ? "Add to Ortak Sepet" : "Ortak Sepet'e ekle";
+}
+
+async function createContextMenus() {
+  await browser.contextMenus.removeAll();
+  await browser.contextMenus.create({
+    id: "add-to-ortak-sepet",
+    title: await getContextMenuTitle(),
+    contexts: ["page"],
+  });
+}
+
+async function updateContextMenuLanguage() {
+  try {
+    await browser.contextMenus.update("add-to-ortak-sepet", {
+      title: await getContextMenuTitle(),
+    });
+  } catch {
+    await createContextMenus();
+  }
 }
 
 async function updateBadge() {
@@ -43,8 +191,8 @@ function extractNumberFromPrice(priceText) {
   if (!priceText) return null;
 
   let cleaned = String(priceText)
-    .replace(/TL/gi, "")
-    .replace(/₺/g, "")
+    .replace(/TL|TRY|GBP/gi, "")
+    .replace(/[₺£]/g, "")
     .replace(/\s/g, "")
     .trim();
 
@@ -317,6 +465,17 @@ async function updateAllPrices() {
   };
 }
 
+
+browser.contextMenus.onClicked.addListener((info, tab) => {
+  if (info.menuItemId !== "add-to-ortak-sepet" || !tab || !tab.id) {
+    return;
+  }
+
+  addCurrentTabProduct(tab.id).catch(() => {
+    // Desteklenmeyen veya henüz hazır olmayan sayfalarda sessiz geç.
+  });
+});
+
 browser.runtime.onMessage.addListener((message) => {
   if (message && message.type === "UPDATE_ALL_PRICES") {
     return updateAllPrices();
@@ -326,12 +485,24 @@ browser.runtime.onMessage.addListener((message) => {
 });
 
 browser.storage.onChanged.addListener((changes, areaName) => {
-  if (areaName === "local" && changes[CART_KEY]) {
+  if (areaName !== "local") return;
+
+  if (changes[CART_KEY]) {
     updateBadge();
+  }
+
+  if (changes[LANGUAGE_KEY]) {
+    updateContextMenuLanguage();
   }
 });
 
-browser.runtime.onInstalled.addListener(updateBadge);
-browser.runtime.onStartup.addListener(updateBadge);
+browser.runtime.onInstalled.addListener(() => {
+  updateBadge();
+  createContextMenus();
+});
+browser.runtime.onStartup.addListener(() => {
+  updateBadge();
+  createContextMenus();
+});
 
 updateBadge();

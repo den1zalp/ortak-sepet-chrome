@@ -8,56 +8,61 @@
   <body>
     <main class="app">
       <header class="header">
-        <h1>Ortak Sepet</h1>
+        <div>
+          <h1>Ortak Sepet</h1>
+          <p id="appSubtitle"></p>
+        </div>
+
+        <label class="language-control">
+          <span id="languageLabel"></span>
+          <select id="languageSelect" aria-label="Dil seçimi">
+            <option value="tr">TR</option>
+            <option value="en">EN</option>
+          </select>
+        </label>
       </header>
 
-      <button id="addCurrentProductBtn" class="primary-button">
-        Bu Ürünü Ekle
-      </button>
+      <button id="addCurrentProductBtn" class="primary-button"></button>
 
       <button
         id="categorizeProductsBtn"
         class="secondary-button compact-button"
-      >
-        Ürünleri Kategorize Et
-      </button>
+      ></button>
 
       <button
         id="installmentProductsBtn"
         class="secondary-button compact-button"
-      >
-        Taksit Olanlar
-      </button>
+      ></button>
 
-      <button id="updateAllPricesBtn" class="secondary-button compact-button">
-        Tüm Fiyatları Güncelle
-      </button>
+      <button id="updateAllPricesBtn" class="secondary-button compact-button"></button>
+
+      <button id="exportCsvBtn" class="secondary-button compact-button"></button>
 
       <p id="status" class="status"></p>
 
       <section class="summary">
         <div>
-          <span class="summary-label">Ürün sayısı</span>
+          <span id="itemCountLabel" class="summary-label"></span>
           <strong id="itemCount">0</strong>
         </div>
 
         <div>
-          <span class="summary-label">Genel toplam</span>
+          <span id="totalPriceLabel" class="summary-label"></span>
           <strong id="totalPrice">0,00 TL</strong>
         </div>
 
         <div>
-          <span class="summary-label">Seçili toplam</span>
+          <span id="selectedTotalPriceLabel" class="summary-label"></span>
           <strong id="selectedTotalPrice">0,00 TL</strong>
         </div>
       </section>
 
       <section class="cart-section">
-        <h2>Sepet</h2>
+        <h2 id="cartTitle"></h2>
         <div id="cartItems"></div>
       </section>
 
-      <button id="clearCartBtn" class="secondary-button">Sepeti Temizle</button>
+      <button id="clearCartBtn" class="secondary-button"></button>
     </main>
 
     <script src="browser-polyfill.js"></script>

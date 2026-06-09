@@ -1,5 +1,6 @@
 const CART_KEY = "ortakSepetItems";
 const VIEW_MODE_KEY = "ortakSepetViewMode";
+const LANGUAGE_KEY = "ortakSepetLanguage";
 
 const addCurrentProductBtn = document.getElementById("addCurrentProductBtn");
 const categorizeProductsBtn = document.getElementById("categorizeProductsBtn");
@@ -7,12 +8,289 @@ const installmentProductsBtn = document.getElementById(
   "installmentProductsBtn",
 );
 const updateAllPricesBtn = document.getElementById("updateAllPricesBtn");
+const exportCsvBtn = document.getElementById("exportCsvBtn");
 const clearCartBtn = document.getElementById("clearCartBtn");
 const statusEl = document.getElementById("status");
 const cartItemsEl = document.getElementById("cartItems");
 const totalPriceEl = document.getElementById("totalPrice");
 const selectedTotalPriceEl = document.getElementById("selectedTotalPrice");
 const itemCountEl = document.getElementById("itemCount");
+const languageSelect = document.getElementById("languageSelect");
+const appSubtitleEl = document.getElementById("appSubtitle");
+const languageLabelEl = document.getElementById("languageLabel");
+const itemCountLabelEl = document.getElementById("itemCountLabel");
+const totalPriceLabelEl = document.getElementById("totalPriceLabel");
+const selectedTotalPriceLabelEl = document.getElementById("selectedTotalPriceLabel");
+const cartTitleEl = document.getElementById("cartTitle");
+
+const I18N = {
+  tr: {
+    appSubtitle: "Çok siteli alışveriş sepeti",
+    language: "Dil",
+    addCurrentProduct: "Bu Ürünü Ekle",
+    categorizeProducts: "Ürünleri Kategorize Et",
+    removeCategories: "Kategorileri Sil",
+    installmentProducts: "Taksit / Finance Olanlar",
+    removeInstallmentGrouping: "Taksit/Finance Gruplamasını Kaldır",
+    updateAllPrices: "Tüm Fiyatları Güncelle",
+    updating: "Güncelleniyor...",
+    exportCsv: "CSV / Excel Olarak Dışa Aktar",
+    clearCart: "Sepeti Temizle",
+    itemCount: "Ürün sayısı",
+    total: "Genel toplam",
+    selectedTotal: "Seçili toplam",
+    cart: "Sepet",
+    emptyCart: "Sepet boş. Desteklenen bir ürün sayfasına giderek ürün ekleyebilirsiniz.",
+    selectedTotalTitle: "Seçili toplama dahil et",
+    noProductTitle: "Ürün adı yok",
+    unknownSite: "Bilinmeyen site",
+    priceReadFailed: "Fiyat okunamadı",
+    site: "Site",
+    price: "Fiyat",
+    source: "Kaynak",
+    manual: "Manuel",
+    previous: "Önceki",
+    installment: "Taksit",
+    finance: "Finance",
+    delivery: "Kargo",
+    check: "Kontrol",
+    available: "Var",
+    unavailable: "Yok",
+    unknown: "Bilinmiyor",
+    freeDelivery: "Ücretsiz kargo",
+    deliveryInfoAvailable: "Kargo/teslimat bilgisi var",
+    calculatedAtCheckout: "Sepette hesaplanır",
+    subtotalUnavailable: "Ara toplam hesaplanamadı",
+    subtotal: "Ara toplam: {total}",
+    lastFailed: "Başarısız",
+    lastManual: "Manuel",
+    lastManualKept: "Manuel korundu",
+    lastSuccess: "Başarılı",
+    quantity: "Adet: {quantity}",
+    goToLink: "Linke Git",
+    manualPrice: "Manuel Fiyat Gir",
+    remove: "Sil",
+    installmentAvailableGroup: "Taksit / Finance Var",
+    installmentUnavailableGroup: "Taksit / Finance Yok / Bilinmiyor",
+    productMeta: "{products} ürün • {quantity} adet • {total}",
+    readingProduct: "Ürün okunuyor...",
+    activeTabMissing: "Aktif sekme bulunamadı.",
+    productReadFailed: "Bu sayfadan ürün okunamadı.",
+    unsupportedPage: "Bu sayfada eklenti çalışmıyor olabilir. Desteklenen bir ürün sayfasında dene.",
+    duplicateAdded: "Bu ürün zaten vardı, adedi artırıldı ve seçili yapıldı.",
+    productAdded: "Ürün sepete eklendi.",
+    noItemsToCategorize: "Kategorize edilecek ürün yok.",
+    categoriesRemoved: "Kategoriler silindi.",
+    categoriesApplied: "Ürünler kategorilere ayrıldı.",
+    noItemsToGroup: "Gruplanacak ürün yok.",
+    groupingRemoved: "Taksit/finance gruplaması kaldırıldı.",
+    groupedByPayment: "Ürünler taksit/finance durumuna göre gruplandı.",
+    noItemsToUpdate: "Güncellenecek ürün yok.",
+    pricesUpdating: "Fiyatlar güncelleniyor...",
+    pricesUpdatingProgress: "Fiyatlar güncelleniyor: {current}/{total}",
+    pricesUpdateFailed: "Fiyatlar güncellenemedi.",
+    pricesUpdateDone: "Güncelleme tamamlandı. {changed} ürünün fiyatı değişti, {failed} ürün güncellenemedi.",
+    pricesUpdateError: "Güncelleme sırasında hata oluştu.",
+    promptNewPrice: "Yeni fiyatı gir:",
+    invalidPrice: "Geçerli bir fiyat girilmedi.",
+    manualPriceUpdated: "Fiyat manuel olarak güncellendi.",
+    productRemoved: "Ürün silindi.",
+    quantityZeroRemoved: "Adet 0 oldu, ürün silindi.",
+    csvNoItems: "Dışa aktarılacak ürün yok.",
+    csvExported: "Sepet CSV olarak dışa aktarıldı. Excel ile açabilirsiniz.",
+    cartCleared: "Sepet temizlendi.",
+    yes: "Evet",
+    no: "Hayır",
+    csvProductName: "Ürün Adı",
+    csvSite: "Site",
+    csvPrice: "Fiyat",
+    csvQuantity: "Adet",
+    csvSubtotal: "Ara Toplam",
+    csvCurrency: "Para Birimi",
+    csvCategory: "Kategori",
+    csvPaymentPlan: "Taksit / Finance",
+    csvDelivery: "Kargo / Teslimat",
+    csvManualPrice: "Manuel Fiyat",
+    csvUrl: "URL",
+  },
+  en: {
+    appSubtitle: "Multi-site shopping basket",
+    language: "Language",
+    addCurrentProduct: "Add This Product",
+    categorizeProducts: "Categorise Products",
+    removeCategories: "Remove Categories",
+    installmentProducts: "With Instalments / Finance",
+    removeInstallmentGrouping: "Remove Instalment / Finance Grouping",
+    updateAllPrices: "Refresh All Prices",
+    updating: "Updating...",
+    exportCsv: "Export as CSV / Excel",
+    clearCart: "Clear Basket",
+    itemCount: "Item count",
+    total: "Total",
+    selectedTotal: "Selected total",
+    cart: "Basket",
+    emptyCart: "Your basket is empty. Open a supported product page to add an item.",
+    selectedTotalTitle: "Include in selected total",
+    noProductTitle: "No product title",
+    unknownSite: "Unknown site",
+    priceReadFailed: "Price could not be read",
+    site: "Site",
+    price: "Price",
+    source: "Source",
+    manual: "Manual",
+    previous: "Previous",
+    installment: "Instalments",
+    finance: "Finance",
+    delivery: "Delivery",
+    check: "Check",
+    available: "Available",
+    unavailable: "Unavailable",
+    unknown: "Unknown",
+    freeDelivery: "Free delivery",
+    deliveryInfoAvailable: "Delivery information available",
+    calculatedAtCheckout: "Calculated at checkout",
+    subtotalUnavailable: "Subtotal could not be calculated",
+    subtotal: "Subtotal: {total}",
+    lastFailed: "Failed",
+    lastManual: "Manual",
+    lastManualKept: "Manual kept",
+    lastSuccess: "Successful",
+    quantity: "Qty: {quantity}",
+    goToLink: "Open Link",
+    manualPrice: "Enter Manual Price",
+    remove: "Remove",
+    installmentAvailableGroup: "Instalments / Finance Available",
+    installmentUnavailableGroup: "No Instalments / Finance / Unknown",
+    productMeta: "{products} products • {quantity} items • {total}",
+    readingProduct: "Reading product...",
+    activeTabMissing: "Active tab could not be found.",
+    productReadFailed: "Product could not be read from this page.",
+    unsupportedPage: "The extension may not work on this page. Try a supported product page.",
+    duplicateAdded: "This product was already in the basket, so its quantity was increased and selected.",
+    productAdded: "Product added to basket.",
+    noItemsToCategorize: "There are no products to categorise.",
+    categoriesRemoved: "Categories removed.",
+    categoriesApplied: "Products categorised.",
+    noItemsToGroup: "There are no products to group.",
+    groupingRemoved: "Instalment/finance grouping removed.",
+    groupedByPayment: "Products grouped by instalment/finance availability.",
+    noItemsToUpdate: "There are no products to refresh.",
+    pricesUpdating: "Refreshing prices...",
+    pricesUpdatingProgress: "Refreshing prices: {current}/{total}",
+    pricesUpdateFailed: "Prices could not be refreshed.",
+    pricesUpdateDone: "Refresh complete. {changed} product prices changed, {failed} products could not be refreshed.",
+    pricesUpdateError: "An error occurred while refreshing prices.",
+    promptNewPrice: "Enter a new price:",
+    invalidPrice: "A valid price was not entered.",
+    manualPriceUpdated: "Price updated manually.",
+    productRemoved: "Product removed.",
+    quantityZeroRemoved: "Quantity reached 0, product removed.",
+    csvNoItems: "There are no products to export.",
+    csvExported: "Basket exported as CSV. You can open it with Excel.",
+    cartCleared: "Basket cleared.",
+    yes: "Yes",
+    no: "No",
+    csvProductName: "Product Name",
+    csvSite: "Site",
+    csvPrice: "Price",
+    csvQuantity: "Quantity",
+    csvSubtotal: "Subtotal",
+    csvCurrency: "Currency",
+    csvCategory: "Category",
+    csvPaymentPlan: "Instalments / Finance",
+    csvDelivery: "Delivery",
+    csvManualPrice: "Manual Price",
+    csvUrl: "URL",
+  },
+};
+
+const CATEGORY_LABELS = {
+  en: {
+    "Anne & Bebek": "Mother & Baby",
+    "İçecek": "Drinks",
+    "Elektronik": "Electronics",
+    "Telefon & Aksesuar": "Phone & Accessories",
+    "Bilgisayar": "Computers",
+    "Ev & Yaşam": "Home & Living",
+    "Kişisel Bakım": "Personal Care",
+    "Giyim": "Clothing",
+    "Kitap & Kırtasiye": "Books & Stationery",
+    "Market": "Groceries",
+    "Oyuncak": "Toys",
+    "Otomotiv": "Automotive",
+    "Diğer": "Other",
+  },
+};
+
+let currentLanguage = "tr";
+
+function translate(key, values = {}) {
+  const dictionary = I18N[currentLanguage] || I18N.tr;
+  let text = dictionary[key] || I18N.tr[key] || key;
+  for (const [name, value] of Object.entries(values)) {
+    text = text.replaceAll(`{${name}}`, String(value));
+  }
+  return text;
+}
+
+function translateCategory(categoryName) {
+  return CATEGORY_LABELS[currentLanguage]?.[categoryName] || categoryName;
+}
+
+function getPaymentLabel(item) {
+  return item.region === "UK" || getItemCurrency(item) === "GBP"
+    ? translate("finance")
+    : translate("installment");
+}
+
+function normalizeDeliveryText(text) {
+  if (currentLanguage !== "en") return text;
+
+  const normalized = normalizeForCategory(text);
+
+  if (
+    normalized.includes("ucretsiz kargo") ||
+    normalized.includes("kargo bedava") ||
+    normalized.includes("bedava kargo") ||
+    normalized.includes("ucretsiz teslimat") ||
+    normalized.includes("ucretsiz teslim")
+  ) {
+    return translate("freeDelivery");
+  }
+
+  if (normalized.includes("stoktan kargo")) return "Ships from stock";
+  if (normalized.includes("hizli gonderi")) return "Fast delivery";
+  if (normalized.includes("ayni gun kargo")) return "Same-day dispatch";
+  if (normalized.includes("sepette hesaplan")) return translate("calculatedAtCheckout");
+
+  return text;
+}
+
+async function getLanguage() {
+  const result = await browser.storage.local.get(LANGUAGE_KEY);
+  return result[LANGUAGE_KEY] || "tr";
+}
+
+async function setLanguage(language) {
+  currentLanguage = language === "en" ? "en" : "tr";
+  await browser.storage.local.set({ [LANGUAGE_KEY]: currentLanguage });
+}
+
+function applyStaticTranslations() {
+  document.documentElement.lang = currentLanguage;
+  appSubtitleEl.textContent = translate("appSubtitle");
+  languageLabelEl.textContent = translate("language");
+  addCurrentProductBtn.textContent = translate("addCurrentProduct");
+  updateAllPricesBtn.textContent = translate("updateAllPrices");
+  exportCsvBtn.textContent = translate("exportCsv");
+  clearCartBtn.textContent = translate("clearCart");
+  itemCountLabelEl.textContent = translate("itemCount");
+  totalPriceLabelEl.textContent = translate("total");
+  selectedTotalPriceLabelEl.textContent = translate("selectedTotal");
+  cartTitleEl.textContent = translate("cart");
+  languageSelect.value = currentLanguage;
+}
+
 
 async function getCartItems() {
   const result = await browser.storage.local.get(CART_KEY);
@@ -344,12 +622,22 @@ function categorizeProduct(item) {
   return matchedRule ? matchedRule.category : "Diğer";
 }
 
+function detectCurrencyFromPrice(priceText) {
+  const text = String(priceText || "");
+
+  if (/£|GBP/i.test(text)) {
+    return "GBP";
+  }
+
+  return "TRY";
+}
+
 function extractNumberFromPrice(priceText) {
   if (!priceText) return null;
 
   let cleaned = String(priceText)
-    .replace(/TL/gi, "")
-    .replace(/₺/g, "")
+    .replace(/TL|TRY|GBP/gi, "")
+    .replace(/[₺£]/g, "")
     .replace(/\s/g, "")
     .trim();
 
@@ -379,21 +667,43 @@ function extractNumberFromPrice(priceText) {
   return Number.isNaN(number) ? null : number;
 }
 
-function formatTRY(value) {
+function formatPriceByCurrency(value, currency = "TRY") {
+  if (currency === "GBP") {
+    return `£${value.toLocaleString("en-GB", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`;
+  }
+
   return `${value.toLocaleString("tr-TR", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })} TL`;
 }
 
-function normalizeManualPriceInput(input) {
+function formatTRY(value) {
+  return formatPriceByCurrency(value, "TRY");
+}
+
+function getItemCurrency(item) {
+  return item.currency || detectCurrencyFromPrice(item.price || item.detectedPrice || "");
+}
+
+function normalizeManualPriceInput(input, item = null) {
   const number = extractNumberFromPrice(input);
 
   if (number === null) {
     return null;
   }
 
-  return formatTRY(number);
+  const explicitCurrency = /£|GBP/i.test(String(input || ""))
+    ? "GBP"
+    : /TL|TRY|₺/i.test(String(input || ""))
+      ? "TRY"
+      : null;
+
+  const currency = explicitCurrency || (item ? getItemCurrency(item) : "TRY");
+  return formatPriceByCurrency(number, currency);
 }
 
 function calculateItemTotal(item) {
@@ -405,30 +715,50 @@ function calculateItemTotal(item) {
   return price * quantity;
 }
 
-function calculateTotal(items) {
-  const total = items.reduce((sum, item) => {
+function calculateTotalsByCurrency(items, selectedOnly = false) {
+  const totals = new Map();
+
+  for (const item of items) {
+    if (selectedOnly && !isSelected(item)) continue;
+
     const itemTotal = calculateItemTotal(item);
+    if (itemTotal === null) continue;
 
-    if (itemTotal === null) return sum;
+    const currency = getItemCurrency(item);
+    totals.set(currency, (totals.get(currency) || 0) + itemTotal);
+  }
 
-    return sum + itemTotal;
-  }, 0);
+  return totals;
+}
 
-  return formatTRY(total);
+function formatTotalsByCurrency(totals) {
+  if (!totals || totals.size === 0) {
+    return "0,00 TL";
+  }
+
+  const order = ["TRY", "GBP"];
+  const entries = Array.from(totals.entries()).sort(([a], [b]) => {
+    const indexA = order.indexOf(a);
+    const indexB = order.indexOf(b);
+
+    if (indexA === -1 && indexB === -1) return a.localeCompare(b);
+    if (indexA === -1) return 1;
+    if (indexB === -1) return -1;
+
+    return indexA - indexB;
+  });
+
+  return entries
+    .map(([currency, value]) => formatPriceByCurrency(value, currency))
+    .join(" + ");
+}
+
+function calculateTotal(items) {
+  return formatTotalsByCurrency(calculateTotalsByCurrency(items));
 }
 
 function calculateSelectedTotal(items) {
-  const total = items.reduce((sum, item) => {
-    if (!isSelected(item)) return sum;
-
-    const itemTotal = calculateItemTotal(item);
-
-    if (itemTotal === null) return sum;
-
-    return sum + itemTotal;
-  }, 0);
-
-  return formatTRY(total);
+  return formatTotalsByCurrency(calculateTotalsByCurrency(items, true));
 }
 
 function calculateTotalItemCount(items) {
@@ -436,21 +766,13 @@ function calculateTotalItemCount(items) {
 }
 
 function calculateCategoryTotal(items) {
-  const total = items.reduce((sum, item) => {
-    const itemTotal = calculateItemTotal(item);
-
-    if (itemTotal === null) return sum;
-
-    return sum + itemTotal;
-  }, 0);
-
-  return formatTRY(total);
+  return formatTotalsByCurrency(calculateTotalsByCurrency(items));
 }
 
 function getInstallmentDisplay(item) {
   if (item.installmentAvailable === true) {
     return {
-      text: "Var",
+      text: translate("available"),
       bold: true,
     };
   }
@@ -465,14 +787,14 @@ function getInstallmentDisplay(item) {
     installmentText.includes("bilgisi")
   ) {
     return {
-      text: "Bilinmiyor",
+      text: translate("unknown"),
       bold: false,
     };
   }
 
   if (installmentText.includes("yok")) {
     return {
-      text: "Yok",
+      text: translate("unavailable"),
       bold: false,
     };
   }
@@ -489,27 +811,27 @@ function getShippingDisplay(item) {
       item.freeShipping === true || item.shippingAvailable === true;
 
     return {
-      text: item.shippingText,
+      text: normalizeDeliveryText(item.shippingText),
       bold: isStrongShipping,
     };
   }
 
   if (item.freeShipping === true) {
     return {
-      text: "Ücretsiz kargo",
+      text: translate("freeDelivery"),
       bold: true,
     };
   }
 
   if (item.shippingAvailable === true) {
     return {
-      text: "Kargo/teslimat bilgisi var",
+      text: translate("deliveryInfoAvailable"),
       bold: true,
     };
   }
 
   return {
-    text: "Sepette hesaplanır",
+    text: translate("calculatedAtCheckout"),
     bold: false,
   };
 }
@@ -518,28 +840,28 @@ function getItemLineTotal(item) {
   const itemTotal = calculateItemTotal(item);
 
   if (itemTotal === null) {
-    return "Ara toplam hesaplanamadı";
+    return translate("subtotalUnavailable");
   }
 
-  return `Ara toplam: ${formatTRY(itemTotal)}`;
+  return translate("subtotal", { total: formatPriceByCurrency(itemTotal, getItemCurrency(item)) });
 }
 
 function getLastUpdateText(item) {
   if (!item.lastCheckedAt) return null;
 
   if (item.lastUpdateStatus === "failed") {
-    return "Son güncelleme: Başarısız";
+    return translate("lastFailed");
   }
 
   if (item.lastUpdateStatus === "manual") {
-    return "Son güncelleme: Manuel";
+    return translate("lastManual");
   }
 
   if (item.lastUpdateStatus === "manual-kept") {
-    return "Son güncelleme: Manuel korundu";
+    return translate("lastManualKept");
   }
 
-  return "Son güncelleme: Başarılı";
+  return translate("lastSuccess");
 }
 
 function createDetailRow(labelText, valueText, shouldBoldValue = false) {
@@ -562,6 +884,36 @@ function createDetailRow(labelText, valueText, shouldBoldValue = false) {
   return row;
 }
 
+function getCategoryColor(categoryName) {
+  const colors = {
+    "Anne & Bebek": "#f9a8d4",
+    "İçecek": "#38bdf8",
+    "Elektronik": "#60a5fa",
+    "Telefon & Aksesuar": "#818cf8",
+    "Bilgisayar": "#fb923c",
+    "Ev & Yaşam": "#34d399",
+    "Kişisel Bakım": "#c084fc",
+    "Giyim": "#f472b6",
+    "Kitap & Kırtasiye": "#a78bfa",
+    "Market": "#22c55e",
+    "Oyuncak": "#facc15",
+    "Otomotiv": "#94a3b8",
+    "Taksit Var": "#22c55e",
+    "Taksit / Finance Var": "#22c55e",
+    "Instalments / Finance Available": "#22c55e",
+    "Taksit Yok / Bilinmiyor": "#94a3b8",
+    "Taksit / Finance Yok / Bilinmiyor": "#94a3b8",
+    "No Instalments / Finance / Unknown": "#94a3b8",
+    "Diğer": "#d1d5db",
+  };
+
+  return colors[categoryName] || "#d1d5db";
+}
+
+function applyCategoryAccent(element, categoryName) {
+  element.style.setProperty("--category-color", getCategoryColor(categoryName));
+}
+
 function createCartItemElement(item) {
   const wrapper = document.createElement("div");
   wrapper.className = isSelected(item)
@@ -570,6 +922,11 @@ function createCartItemElement(item) {
 
   if (item.lastUpdateStatus === "failed") {
     wrapper.classList.add("cart-item-update-failed");
+  }
+
+  if (item.category) {
+    applyCategoryAccent(wrapper, item.category);
+    wrapper.classList.add("cart-item-with-category");
   }
 
   const image = document.createElement("img");
@@ -588,14 +945,27 @@ function createCartItemElement(item) {
   checkbox.className = "select-checkbox";
   checkbox.checked = isSelected(item);
   checkbox.dataset.toggleSelected = item.id;
-  checkbox.title = "Seçili toplama dahil et";
+  checkbox.title = translate("selectedTotalTitle");
+
+  const titleContainer = document.createElement("div");
+  titleContainer.className = "title-container";
 
   const title = document.createElement("div");
   title.className = "cart-title";
-  title.textContent = item.title || "Ürün adı yok";
+  title.textContent = item.title || translate("noProductTitle");
+
+  titleContainer.appendChild(title);
+
+  if (item.category) {
+    const categoryBadge = document.createElement("span");
+    categoryBadge.className = "category-badge";
+    categoryBadge.textContent = translateCategory(item.category);
+    applyCategoryAccent(categoryBadge, item.category);
+    titleContainer.appendChild(categoryBadge);
+  }
 
   titleRow.appendChild(checkbox);
-  titleRow.appendChild(title);
+  titleRow.appendChild(titleContainer);
 
   const details = document.createElement("div");
   details.className = "product-details";
@@ -604,27 +974,27 @@ function createCartItemElement(item) {
   const shippingDisplay = getShippingDisplay(item);
 
   details.appendChild(
-    createDetailRow("Site", item.site || "Bilinmeyen site", true),
+    createDetailRow(translate("site"), item.site || translate("unknownSite"), true),
   );
 
   details.appendChild(
-    createDetailRow("Fiyat", item.price || "Fiyat okunamadı", true),
+    createDetailRow(translate("price"), item.price || translate("priceReadFailed"), true),
   );
 
   if (item.manualPrice === true) {
-    details.appendChild(createDetailRow("Kaynak", "Manuel", true));
+    details.appendChild(createDetailRow(translate("source"), translate("manual"), true));
   }
 
   if (item.previousPrice && item.previousPrice !== item.price) {
-    details.appendChild(createDetailRow("Önceki", item.previousPrice, false));
+    details.appendChild(createDetailRow(translate("previous"), item.previousPrice, false));
   }
 
   details.appendChild(
-    createDetailRow("Taksit", installmentDisplay.text, installmentDisplay.bold),
+    createDetailRow(getPaymentLabel(item), installmentDisplay.text, installmentDisplay.bold),
   );
 
   details.appendChild(
-    createDetailRow("Kargo", shippingDisplay.text, shippingDisplay.bold),
+    createDetailRow(translate("delivery"), shippingDisplay.text, shippingDisplay.bold),
   );
 
   const lastUpdateText = getLastUpdateText(item);
@@ -632,8 +1002,8 @@ function createCartItemElement(item) {
   if (lastUpdateText) {
     details.appendChild(
       createDetailRow(
-        "Kontrol",
-        lastUpdateText.replace("Son güncelleme: ", ""),
+        translate("check"),
+        lastUpdateText,
         item.lastUpdateStatus === "success" ||
           item.lastUpdateStatus === "manual" ||
           item.lastUpdateStatus === "manual-kept",
@@ -655,7 +1025,7 @@ function createCartItemElement(item) {
 
   const quantityText = document.createElement("span");
   quantityText.className = "quantity-text";
-  quantityText.textContent = `Adet: ${getQuantity(item)}`;
+  quantityText.textContent = translate("quantity", { quantity: getQuantity(item) });
 
   const increaseButton = document.createElement("button");
   increaseButton.className = "small-button quantity-button";
@@ -671,17 +1041,17 @@ function createCartItemElement(item) {
 
   const openButton = document.createElement("button");
   openButton.className = "small-button";
-  openButton.textContent = "Linke Git";
+  openButton.textContent = translate("goToLink");
   openButton.dataset.open = item.id;
 
   const editPriceButton = document.createElement("button");
   editPriceButton.className = "small-button";
-  editPriceButton.textContent = "Fiyat Düzenle";
+  editPriceButton.textContent = translate("manualPrice");
   editPriceButton.dataset.editPrice = item.id;
 
   const removeButton = document.createElement("button");
   removeButton.className = "small-button";
-  removeButton.textContent = "Sil";
+  removeButton.textContent = translate("remove");
   removeButton.dataset.remove = item.id;
 
   actions.appendChild(openButton);
@@ -715,11 +1085,11 @@ function groupItemsByInstallment(items) {
   const groups = [];
 
   if (withInstallment.length > 0) {
-    groups.push(["Taksit Var", withInstallment]);
+    groups.push([translate("installmentAvailableGroup"), withInstallment]);
   }
 
   if (withoutInstallment.length > 0) {
-    groups.push(["Taksit Yok / Bilinmiyor", withoutInstallment]);
+    groups.push([translate("installmentUnavailableGroup"), withoutInstallment]);
   }
 
   return groups;
@@ -749,13 +1119,14 @@ function groupItemsByCategory(items) {
 function createCategoryGroupElement(categoryName, items) {
   const group = document.createElement("section");
   group.className = "category-group";
+  applyCategoryAccent(group, categoryName);
 
   const header = document.createElement("div");
   header.className = "category-header";
 
   const title = document.createElement("h3");
   title.className = "category-title";
-  title.textContent = categoryName;
+  title.textContent = translateCategory(categoryName);
 
   const meta = document.createElement("span");
   meta.className = "category-meta";
@@ -764,7 +1135,7 @@ function createCategoryGroupElement(categoryName, items) {
   const quantityCount = calculateTotalItemCount(items);
   const categoryTotal = calculateCategoryTotal(items);
 
-  meta.textContent = `${productCount} ürün • ${quantityCount} adet • ${categoryTotal}`;
+  meta.textContent = translate("productMeta", { products: productCount, quantity: quantityCount, total: categoryTotal });
 
   header.appendChild(title);
   header.appendChild(meta);
@@ -821,18 +1192,17 @@ async function renderCart() {
   selectedTotalPriceEl.textContent = calculateSelectedTotal(items);
 
   categorizeProductsBtn.textContent =
-    viewMode === "category" ? "Kategorileri Sil" : "Ürünleri Kategorize Et";
+    viewMode === "category" ? translate("removeCategories") : translate("categorizeProducts");
 
   installmentProductsBtn.textContent =
     viewMode === "installment"
-      ? "Taksit Gruplamasını Kaldır"
-      : "Taksit Olanlar";
+      ? translate("removeInstallmentGrouping")
+      : translate("installmentProducts");
 
   if (items.length === 0) {
     const empty = document.createElement("div");
     empty.className = "empty";
-    empty.textContent =
-      "Sepet boş. Desteklenen bir ürün sayfasına giderek ürün ekleyebilirsiniz.";
+    empty.textContent = translate("emptyCart");
     cartItemsEl.appendChild(empty);
     return;
   }
@@ -883,7 +1253,7 @@ function normalizeUrl(url) {
 }
 
 async function addCurrentProduct() {
-  setStatus("Ürün okunuyor...");
+  setStatus(translate("readingProduct"));
 
   const tabs = await browser.tabs.query({
     active: true,
@@ -893,7 +1263,7 @@ async function addCurrentProduct() {
   const activeTab = tabs[0];
 
   if (!activeTab || !activeTab.id) {
-    setStatus("Aktif sekme bulunamadı.");
+    setStatus(translate("activeTabMissing"));
     return;
   }
 
@@ -903,7 +1273,7 @@ async function addCurrentProduct() {
     });
 
     if (!response || !response.ok) {
-      setStatus(response?.error || "Bu sayfadan ürün okunamadı.");
+      setStatus(response?.error || translate("productReadFailed"));
       return;
     }
 
@@ -930,6 +1300,9 @@ async function addCurrentProduct() {
       }
 
       existingItem.image = response.product.image || existingItem.image;
+      existingItem.currency = response.product.currency || detectCurrencyFromPrice(existingItem.price);
+      existingItem.currencySymbol = response.product.currencySymbol || (existingItem.currency === "GBP" ? "£" : "TL");
+      existingItem.region = response.product.region || existingItem.region || (existingItem.currency === "GBP" ? "UK" : "TR");
 
       existingItem.installmentAvailable = response.product.installmentAvailable;
       existingItem.installmentText = response.product.installmentText;
@@ -948,14 +1321,19 @@ async function addCurrentProduct() {
 
       await saveCartItems(items);
 
-      setStatus("Bu ürün zaten vardı, adedi artırıldı ve seçili yapıldı.");
+      setStatus(translate("duplicateAdded"));
       await renderCart();
       return;
     }
 
+    const productCurrency = response.product.currency || detectCurrencyFromPrice(response.product.price);
+
     const newItem = {
       id: createId(),
       ...response.product,
+      currency: productCurrency,
+      currencySymbol: response.product.currencySymbol || (productCurrency === "GBP" ? "£" : "TL"),
+      region: response.product.region || (productCurrency === "GBP" ? "UK" : "TR"),
       quantity: 1,
       selected: true,
       category: categoryModeActive ? categorizeProduct(response.product) : null,
@@ -965,12 +1343,10 @@ async function addCurrentProduct() {
     items.push(newItem);
     await saveCartItems(items);
 
-    setStatus("Ürün sepete eklendi.");
+    setStatus(translate("productAdded"));
     await renderCart();
   } catch (error) {
-    setStatus(
-      "Bu sayfada eklenti çalışmıyor olabilir. Desteklenen bir ürün sayfasında dene.",
-    );
+    setStatus(translate("unsupportedPage"));
   }
 }
 
@@ -978,7 +1354,7 @@ async function categorizeProducts() {
   const items = await getCartItems();
 
   if (items.length === 0) {
-    setStatus("Kategorize edilecek ürün yok.");
+    setStatus(translate("noItemsToCategorize"));
     return;
   }
 
@@ -996,7 +1372,7 @@ async function categorizeProducts() {
     });
 
     await saveCartItems(updatedItems);
-    setStatus("Kategoriler silindi.");
+    setStatus(translate("categoriesRemoved"));
     await renderCart();
     return;
   }
@@ -1012,7 +1388,7 @@ async function categorizeProducts() {
   await saveCartItems(updatedItems);
   await setViewMode("category");
 
-  setStatus("Ürünler kategorilere ayrıldı.");
+  setStatus(translate("categoriesApplied"));
   await renderCart();
 }
 
@@ -1020,7 +1396,7 @@ async function toggleInstallmentGrouping() {
   const items = await getCartItems();
 
   if (items.length === 0) {
-    setStatus("Gruplanacak ürün yok.");
+    setStatus(translate("noItemsToGroup"));
     return;
   }
 
@@ -1028,13 +1404,13 @@ async function toggleInstallmentGrouping() {
 
   if (viewMode === "installment") {
     await setViewMode("normal");
-    setStatus("Taksit gruplaması kaldırıldı.");
+    setStatus(translate("groupingRemoved"));
     await renderCart();
     return;
   }
 
   await setViewMode("installment");
-  setStatus("Ürünler taksit durumuna göre gruplandı.");
+  setStatus(translate("groupedByPayment"));
   await renderCart();
 }
 
@@ -1042,7 +1418,7 @@ async function updateAllPrices() {
   const items = await getCartItems();
 
   if (items.length === 0) {
-    setStatus("Güncellenecek ürün yok.");
+    setStatus(translate("noItemsToUpdate"));
     return;
   }
 
@@ -1051,9 +1427,10 @@ async function updateAllPrices() {
   categorizeProductsBtn.disabled = true;
   installmentProductsBtn.disabled = true;
   clearCartBtn.disabled = true;
+  exportCsvBtn.disabled = true;
 
-  updateAllPricesBtn.textContent = "Güncelleniyor...";
-  setStatus("Fiyatlar güncelleniyor...");
+  updateAllPricesBtn.textContent = translate("updating");
+  setStatus(translate("pricesUpdating"));
 
   try {
     const result = await browser.runtime.sendMessage({
@@ -1063,23 +1440,22 @@ async function updateAllPrices() {
     await renderCart();
 
     if (!result || !result.ok) {
-      setStatus("Fiyatlar güncellenemedi.");
+      setStatus(translate("pricesUpdateFailed"));
       return;
     }
 
-    setStatus(
-      `Güncelleme tamamlandı. ${result.changed} ürünün fiyatı değişti, ${result.failed} ürün güncellenemedi.`,
-    );
+    setStatus(translate("pricesUpdateDone", { changed: result.changed, failed: result.failed }));
   } catch (error) {
-    setStatus("Güncelleme sırasında hata oluştu.");
+    setStatus(translate("pricesUpdateError"));
   } finally {
     updateAllPricesBtn.disabled = false;
     addCurrentProductBtn.disabled = false;
     categorizeProductsBtn.disabled = false;
     installmentProductsBtn.disabled = false;
     clearCartBtn.disabled = false;
+    exportCsvBtn.disabled = false;
 
-    updateAllPricesBtn.textContent = "Tüm Fiyatları Güncelle";
+    updateAllPricesBtn.textContent = translate("updateAllPrices");
     await renderCart();
   }
 }
@@ -1091,16 +1467,16 @@ async function editItemPrice(id) {
   if (!item) return;
 
   const currentPrice = item.price || "";
-  const input = window.prompt("Yeni fiyatı gir:", currentPrice);
+  const input = window.prompt(translate("promptNewPrice"), currentPrice);
 
   if (input === null) {
     return;
   }
 
-  const newPrice = normalizeManualPriceInput(input);
+  const newPrice = normalizeManualPriceInput(input, item);
 
   if (!newPrice) {
-    setStatus("Geçerli bir fiyat girilmedi.");
+    setStatus(translate("invalidPrice"));
     return;
   }
 
@@ -1116,7 +1492,7 @@ async function editItemPrice(id) {
 
   await saveCartItems(items);
 
-  setStatus("Fiyat manuel olarak güncellendi.");
+  setStatus(translate("manualPriceUpdated"));
   await renderCart();
 }
 
@@ -1125,7 +1501,7 @@ async function removeItem(id) {
   const updatedItems = items.filter((item) => item.id !== id);
 
   await saveCartItems(updatedItems);
-  setStatus("Ürün silindi.");
+  setStatus(translate("productRemoved"));
   await renderCart();
 }
 
@@ -1169,7 +1545,7 @@ async function decreaseQuantity(id) {
   if (currentQuantity <= 1) {
     const updatedItems = items.filter((cartItem) => cartItem.id !== id);
     await saveCartItems(updatedItems);
-    setStatus("Adet 0 oldu, ürün silindi.");
+    setStatus(translate("quantityZeroRemoved"));
     await renderCart();
     return;
   }
@@ -1192,10 +1568,87 @@ async function openItem(id) {
   });
 }
 
+function escapeCsvValue(value) {
+  const text = String(value ?? "");
+  return `"${text.replace(/"/g, '""')}"`;
+}
+
+function createExportFilename() {
+  const now = new Date();
+  const datePart = now.toISOString().slice(0, 10);
+  return `ortak-sepet-${datePart}.csv`;
+}
+
+function buildCsvContent(items) {
+  const headers = [
+    translate("csvProductName"),
+    translate("csvSite"),
+    translate("csvPrice"),
+    translate("csvQuantity"),
+    translate("csvSubtotal"),
+    translate("csvCurrency"),
+    translate("csvCategory"),
+    translate("csvPaymentPlan"),
+    translate("csvDelivery"),
+    translate("csvManualPrice"),
+    translate("csvUrl"),
+  ];
+
+  const rows = items.map((item) => {
+    const itemTotal = calculateItemTotal(item);
+    const currency = getItemCurrency(item);
+    const installmentDisplay = getInstallmentDisplay(item);
+    const shippingDisplay = getShippingDisplay(item);
+
+    return [
+      item.title || "",
+      item.site || "",
+      item.price || "",
+      getQuantity(item),
+      itemTotal === null ? "" : formatPriceByCurrency(itemTotal, currency),
+      currency,
+      item.category ? translateCategory(item.category) : "",
+      installmentDisplay.text,
+      shippingDisplay.text,
+      item.manualPrice === true ? translate("yes") : translate("no"),
+      item.url || "",
+    ];
+  });
+
+  const csvLines = [headers, ...rows].map((row) => {
+    return row.map(escapeCsvValue).join(",");
+  });
+
+  return `\ufeff${csvLines.join("\n")}`;
+}
+
+async function exportCartAsCsv() {
+  const items = await getCartItems();
+
+  if (items.length === 0) {
+    setStatus(translate("csvNoItems"));
+    return;
+  }
+
+  const csvContent = buildCsvContent(items);
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = createExportFilename();
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  setStatus(translate("csvExported"));
+}
+
 async function clearCart() {
   await saveCartItems([]);
   await setViewMode("normal");
-  setStatus("Sepet temizlendi.");
+  setStatus(translate("cartCleared"));
   await renderCart();
 }
 
@@ -1203,19 +1656,23 @@ addCurrentProductBtn.addEventListener("click", addCurrentProduct);
 categorizeProductsBtn.addEventListener("click", categorizeProducts);
 installmentProductsBtn.addEventListener("click", toggleInstallmentGrouping);
 updateAllPricesBtn.addEventListener("click", updateAllPrices);
+exportCsvBtn.addEventListener("click", exportCartAsCsv);
 clearCartBtn.addEventListener("click", clearCart);
+languageSelect.addEventListener("change", async () => {
+  await setLanguage(languageSelect.value);
+  applyStaticTranslations();
+  await renderCart();
+});
 
 browser.runtime.onMessage.addListener((message) => {
   if (!message || !message.type) return;
 
   if (message.type === "UPDATE_PRICES_PROGRESS") {
-    setStatus(`Fiyatlar güncelleniyor: ${message.current}/${message.total}`);
+    setStatus(translate("pricesUpdatingProgress", { current: message.current, total: message.total }));
   }
 
   if (message.type === "UPDATE_PRICES_DONE") {
-    setStatus(
-      `Güncelleme tamamlandı. ${message.changed} ürünün fiyatı değişti, ${message.failed} ürün güncellenemedi.`,
-    );
+    setStatus(translate("pricesUpdateDone", { changed: message.changed, failed: message.failed }));
   }
 });
 
@@ -1249,4 +1706,10 @@ cartItemsEl.addEventListener("click", async (event) => {
   }
 });
 
-renderCart();
+async function initPopup() {
+  currentLanguage = await getLanguage();
+  applyStaticTranslations();
+  await renderCart();
+}
+
+initPopup();
