@@ -171,7 +171,12 @@ button:disabled {
 .cart-title {
   font-size: 13px;
   font-weight: 600;
-  line-height: 1.3;
+  line-height: 1.28;
+  overflow-wrap: anywhere;
+}
+
+.title-container {
+  min-width: 0;
 }
 
 .product-details {
@@ -182,15 +187,17 @@ button:disabled {
 
 .detail-row {
   display: grid;
-  grid-template-columns: 58px 1fr;
-  gap: 6px;
+  grid-template-columns: minmax(78px, max-content) 1fr;
+  column-gap: 10px;
+  row-gap: 2px;
   align-items: start;
   font-size: 12px;
-  line-height: 1.35;
+  line-height: 1.45;
 }
 
 .detail-label {
   color: #6b7280;
+  white-space: nowrap;
 }
 
 .detail-value {
@@ -309,17 +316,253 @@ button:disabled {
 .language-control {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   color: #6b7280;
-  font-size: 11px;
+  font-size: 10px;
   white-space: nowrap;
+  height: 28px;
 }
 
 .language-control select {
+  height: 28px;
+  min-width: 54px;
   border: 1px solid #d1d5db;
-  border-radius: 8px;
-  padding: 4px 6px;
+  border-radius: 999px;
+  padding: 0 8px;
   background: white;
   color: #111827;
-  font-size: 11px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  outline: none;
+  cursor: pointer;
+}
+
+
+.header-controls {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 7px;
+}
+
+.theme-toggle {
+  position: relative;
+  width: 54px;
+  height: 28px;
+  border: none;
+  border-radius: 999px;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+  overflow: hidden;
+  flex-shrink: 0;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.16);
+}
+
+.theme-toggle:hover {
+  opacity: 0.95;
+}
+
+.theme-track {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  border-radius: 999px;
+  overflow: hidden;
+  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.14);
+}
+
+.theme-half {
+  position: relative;
+  width: 50%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.theme-half-light {
+  background:
+    radial-gradient(circle at 20% 18%, rgba(255, 255, 255, 0.35) 0 16%, transparent 17%),
+    linear-gradient(180deg, #ffe25a 0%, #7bc7ff 58%, #4aa3f0 100%);
+}
+
+.theme-half-light::before {
+  content: "";
+  position: absolute;
+  left: -4px;
+  bottom: -5px;
+  width: 20px;
+  height: 13px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow:
+    13px -1px 0 2px rgba(255, 255, 255, 0.96),
+    26px 1px 0 1px rgba(255, 255, 255, 0.92);
+}
+
+.theme-sky-cloud {
+  position: absolute;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.theme-cloud-one {
+  right: 2px;
+  bottom: 5px;
+  width: 14px;
+  height: 7px;
+  box-shadow: -6px 1px 0 1px rgba(255, 255, 255, 0.9);
+}
+
+.theme-cloud-two {
+  right: 7px;
+  top: 7px;
+  width: 8px;
+  height: 4px;
+  opacity: 0.45;
+}
+
+.theme-half-dark {
+  background:
+    radial-gradient(circle at 70% 24%, rgba(255, 255, 255, 0.12) 0 16%, transparent 17%),
+    linear-gradient(180deg, #545b66 0%, #333a46 45%, #232936 100%);
+}
+
+.theme-stars {
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(circle, rgba(255, 255, 255, 0.9) 1px, transparent 1.5px),
+    radial-gradient(circle, rgba(255, 255, 255, 0.75) 1px, transparent 1.5px),
+    radial-gradient(circle, rgba(255, 255, 255, 0.55) 1px, transparent 1.5px);
+  background-size: 12px 12px, 17px 17px, 22px 22px;
+  background-position: 4px 5px, 10px 11px, 1px 15px;
+  opacity: 0.8;
+}
+
+.theme-thumb {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #ffe45f 0%, #e8c21e 100%);
+  box-shadow:
+    0 1px 5px rgba(15, 23, 42, 0.26),
+    inset 0 0 0 1px rgba(15, 23, 42, 0.08);
+  transition: transform 0.25s ease, background 0.25s ease;
+  z-index: 2;
+}
+
+.theme-thumb-sun,
+.theme-thumb-moon {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  transition: opacity 0.2s ease;
+}
+
+.theme-thumb-sun {
+  opacity: 1;
+  background:
+    radial-gradient(circle at center, rgba(255, 255, 255, 0.28) 0 2px, transparent 3px),
+    radial-gradient(circle at center, transparent 0 55%, rgba(143, 104, 0, 0.18) 56% 61%, transparent 62%);
+}
+
+.theme-thumb-moon {
+  opacity: 0;
+  background:
+    radial-gradient(circle at 62% 42%, #8992a3 0 4px, transparent 5px),
+    radial-gradient(circle at 42% 34%, #cfd5df 0 2px, transparent 3px),
+    radial-gradient(circle at 45% 66%, #cfd5df 0 1.5px, transparent 2.5px);
+}
+
+.theme-toggle.is-dark .theme-thumb {
+  transform: translateX(26px);
+  background: linear-gradient(180deg, #d9dee7 0%, #aeb7c6 100%);
+}
+
+.theme-toggle.is-dark .theme-thumb-sun {
+  opacity: 0;
+}
+
+.theme-toggle.is-dark .theme-thumb-moon {
+  opacity: 1;
+}
+
+body.dark-mode {
+  background: #0f172a;
+  color: #e5e7eb;
+}
+
+body.dark-mode .header p,
+body.dark-mode .language-control,
+body.dark-mode .summary-label,
+body.dark-mode .detail-label,
+body.dark-mode .category-meta,
+body.dark-mode .status {
+  color: #94a3b8;
+}
+
+body.dark-mode .summary > div,
+body.dark-mode .empty,
+body.dark-mode .cart-item {
+  background: #111827;
+  border-color: #334155;
+}
+
+body.dark-mode .empty {
+  color: #94a3b8;
+}
+
+body.dark-mode .cart-item-update-failed {
+  background: #2a1218;
+  border-color: #7f1d1d;
+}
+
+body.dark-mode .cart-image {
+  background: #1f2937;
+}
+
+body.dark-mode .cart-title,
+body.dark-mode .line-total,
+body.dark-mode .detail-value-strong,
+body.dark-mode .category-title {
+  color: #f8fafc;
+}
+
+body.dark-mode .detail-value,
+body.dark-mode .quantity-text {
+  color: #d1d5db;
+}
+
+body.dark-mode .small-button,
+body.dark-mode .language-control select {
+  background: #1f2937;
+  border-color: #334155;
+  color: #e5e7eb;
+}
+
+body.dark-mode .secondary-button {
+  background: #475569;
+}
+
+body.dark-mode .compact-button {
+  background: #334155;
+}
+
+body.dark-mode .primary-button {
+  background: #e5e7eb;
+  color: #111827;
+}
+
+body.dark-mode .select-checkbox {
+  accent-color: #e5e7eb;
+}
+
+body.dark-mode .category-badge {
+  background: color-mix(in srgb, var(--category-color, #94a3b8) 28%, #111827);
+  border-color: color-mix(in srgb, var(--category-color, #94a3b8) 58%, #111827);
+  color: #e5e7eb;
 }

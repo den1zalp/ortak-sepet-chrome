@@ -1,6 +1,7 @@
 const CART_KEY = "ortakSepetItems";
 const VIEW_MODE_KEY = "ortakSepetViewMode";
 const LANGUAGE_KEY = "ortakSepetLanguage";
+const THEME_KEY = "ortakSepetTheme";
 
 const addCurrentProductBtn = document.getElementById("addCurrentProductBtn");
 const categorizeProductsBtn = document.getElementById("categorizeProductsBtn");
@@ -16,6 +17,7 @@ const totalPriceEl = document.getElementById("totalPrice");
 const selectedTotalPriceEl = document.getElementById("selectedTotalPrice");
 const itemCountEl = document.getElementById("itemCount");
 const languageSelect = document.getElementById("languageSelect");
+const themeToggleBtn = document.getElementById("themeToggleBtn");
 const appSubtitleEl = document.getElementById("appSubtitle");
 const languageLabelEl = document.getElementById("languageLabel");
 const itemCountLabelEl = document.getElementById("itemCountLabel");
@@ -25,8 +27,10 @@ const cartTitleEl = document.getElementById("cartTitle");
 
 const I18N = {
   tr: {
-    appSubtitle: "Çok siteli alışveriş sepeti",
+    appSubtitle: "Alışverişte ortak sepetiniz",
     language: "Dil",
+    enableDarkMode: "Karanlık Mod",
+    enableLightMode: "Aydınlık Mod",
     addCurrentProduct: "Bu Ürünü Ekle",
     categorizeProducts: "Ürünleri Kategorize Et",
     removeCategories: "Kategorileri Sil",
@@ -51,7 +55,7 @@ const I18N = {
     manual: "Manuel",
     previous: "Önceki",
     installment: "Taksit",
-    finance: "Finance",
+    finance: "Finansman",
     delivery: "Kargo",
     check: "Kontrol",
     available: "Var",
@@ -114,8 +118,10 @@ const I18N = {
     csvUrl: "URL",
   },
   en: {
-    appSubtitle: "Multi-site shopping basket",
+    appSubtitle: "Your shared shopping basket",
     language: "Language",
+    enableDarkMode: "Dark Mode",
+    enableLightMode: "Light Mode",
     addCurrentProduct: "Add This Product",
     categorizeProducts: "Categorise Products",
     removeCategories: "Remove Categories",
@@ -223,6 +229,7 @@ const CATEGORY_LABELS = {
 };
 
 let currentLanguage = "tr";
+let currentTheme = "light";
 
 function translate(key, values = {}) {
   const dictionary = I18N[currentLanguage] || I18N.tr;
@@ -238,14 +245,16 @@ function translateCategory(categoryName) {
 }
 
 function getPaymentLabel(item) {
+  if (currentLanguage === "tr") {
+    return translate("installment");
+  }
+
   return item.region === "UK" || getItemCurrency(item) === "GBP"
     ? translate("finance")
     : translate("installment");
 }
 
 function normalizeDeliveryText(text) {
-  if (currentLanguage !== "en") return text;
-
   const normalized = normalizeForCategory(text);
 
   if (
@@ -253,15 +262,41 @@ function normalizeDeliveryText(text) {
     normalized.includes("kargo bedava") ||
     normalized.includes("bedava kargo") ||
     normalized.includes("ucretsiz teslimat") ||
-    normalized.includes("ucretsiz teslim")
+    normalized.includes("ucretsiz teslim") ||
+    normalized.includes("free delivery") ||
+    normalized.includes("free shipping")
   ) {
     return translate("freeDelivery");
   }
 
-  if (normalized.includes("stoktan kargo")) return "Ships from stock";
-  if (normalized.includes("hizli gonderi")) return "Fast delivery";
-  if (normalized.includes("ayni gun kargo")) return "Same-day dispatch";
-  if (normalized.includes("sepette hesaplan")) return translate("calculatedAtCheckout");
+  if (
+    normalized.includes("stoktan kargo") ||
+    normalized.includes("ships from stock")
+  ) {
+    return currentLanguage === "en" ? "Ships from stock" : "Stoktan kargo";
+  }
+
+  if (
+    normalized.includes("hizli gonderi") ||
+    normalized.includes("fast delivery")
+  ) {
+    return currentLanguage === "en" ? "Fast delivery" : "Hızlı gönderi";
+  }
+
+  if (
+    normalized.includes("ayni gun kargo") ||
+    normalized.includes("same day dispatch") ||
+    normalized.includes("same-day dispatch")
+  ) {
+    return currentLanguage === "en" ? "Same-day dispatch" : "Aynı gün kargo";
+  }
+
+  if (
+    normalized.includes("sepette hesaplan") ||
+    normalized.includes("calculated at checkout")
+  ) {
+    return translate("calculatedAtCheckout");
+  }
 
   return text;
 }
@@ -274,6 +309,29 @@ async function getLanguage() {
 async function setLanguage(language) {
   currentLanguage = language === "en" ? "en" : "tr";
   await browser.storage.local.set({ [LANGUAGE_KEY]: currentLanguage });
+}
+
+async function getTheme() {
+  const result = await browser.storage.local.get(THEME_KEY);
+  return result[THEME_KEY] === "dark" ? "dark" : "light";
+}
+
+async function setTheme(theme) {
+  currentTheme = theme === "dark" ? "dark" : "light";
+  await browser.storage.local.set({ [THEME_KEY]: currentTheme });
+}
+
+function applyTheme() {
+  const isDark = currentTheme === "dark";
+  document.body.classList.toggle("dark-mode", isDark);
+  themeToggleBtn.classList.toggle("is-dark", isDark);
+  themeToggleBtn.setAttribute(
+    "aria-label",
+    isDark ? translate("enableLightMode") : translate("enableDarkMode"),
+  );
+  themeToggleBtn.title = isDark
+    ? translate("enableLightMode")
+    : translate("enableDarkMode");
 }
 
 function applyStaticTranslations() {
@@ -289,6 +347,7 @@ function applyStaticTranslations() {
   selectedTotalPriceLabelEl.textContent = translate("selectedTotal");
   cartTitleEl.textContent = translate("cart");
   languageSelect.value = currentLanguage;
+  applyTheme();
 }
 
 
@@ -864,6 +923,16 @@ function getLastUpdateText(item) {
   return translate("lastSuccess");
 }
 
+function truncateProductTitle(titleText, maxLength = 60) {
+  const cleanedTitle = String(titleText || "").replace(/\s+/g, " ").trim();
+
+  if (cleanedTitle.length <= maxLength) {
+    return cleanedTitle;
+  }
+
+  return `${cleanedTitle.slice(0, maxLength).trim()}…`;
+}
+
 function createDetailRow(labelText, valueText, shouldBoldValue = false) {
   const row = document.createElement("div");
   row.className = "detail-row";
@@ -952,7 +1021,9 @@ function createCartItemElement(item) {
 
   const title = document.createElement("div");
   title.className = "cart-title";
-  title.textContent = item.title || translate("noProductTitle");
+  const fullTitle = item.title || translate("noProductTitle");
+  title.textContent = truncateProductTitle(fullTitle, 60);
+  title.title = fullTitle;
 
   titleContainer.appendChild(title);
 
@@ -1664,6 +1735,11 @@ languageSelect.addEventListener("change", async () => {
   await renderCart();
 });
 
+themeToggleBtn.addEventListener("click", async () => {
+  await setTheme(currentTheme === "dark" ? "light" : "dark");
+  applyTheme();
+});
+
 browser.runtime.onMessage.addListener((message) => {
   if (!message || !message.type) return;
 
@@ -1708,6 +1784,7 @@ cartItemsEl.addEventListener("click", async (event) => {
 
 async function initPopup() {
   currentLanguage = await getLanguage();
+  currentTheme = await getTheme();
   applyStaticTranslations();
   await renderCart();
 }

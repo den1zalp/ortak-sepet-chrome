@@ -13,13 +13,31 @@
           <p id="appSubtitle"></p>
         </div>
 
-        <label class="language-control">
-          <span id="languageLabel"></span>
-          <select id="languageSelect" aria-label="Dil seçimi">
-            <option value="tr">TR</option>
-            <option value="en">EN</option>
-          </select>
-        </label>
+        <div class="header-controls">
+          <label class="language-control">
+            <span id="languageLabel"></span>
+            <select id="languageSelect" aria-label="Dil seçimi">
+              <option value="tr">TR</option>
+              <option value="en">EN</option>
+            </select>
+          </label>
+
+          <button id="themeToggleBtn" class="theme-toggle" type="button" aria-label="Tema değiştir">
+            <span class="theme-track">
+              <span class="theme-half theme-half-light" aria-hidden="true">
+                <span class="theme-sky-cloud theme-cloud-one"></span>
+                <span class="theme-sky-cloud theme-cloud-two"></span>
+              </span>
+              <span class="theme-half theme-half-dark" aria-hidden="true">
+                <span class="theme-stars"></span>
+              </span>
+            </span>
+            <span class="theme-thumb" aria-hidden="true">
+              <span class="theme-thumb-sun"></span>
+              <span class="theme-thumb-moon"></span>
+            </span>
+          </button>
+        </div>
       </header>
 
       <button id="addCurrentProductBtn" class="primary-button"></button>
