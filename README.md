@@ -1,26 +1,38 @@
 # Ortak Sepet Chrome Extension
 
-Türkiye odaklı ortak alışveriş sepeti Chrome eklentisi.
+**Ortak Sepet**, farklı e-ticaret sitelerindeki ürünleri tek bir lokal sepette toplamanızı sağlayan ücretsiz bir Chrome eklentisidir.
 
-Ortak Sepet, farklı e-ticaret sitelerindeki ürünleri tek bir sepette toplamayı, toplam fiyatı hesaplamayı, ürünleri kategorize etmeyi ve kayıtlı ürünlerin fiyatlarını tek butonla güncellemeyi amaçlayan bir tarayıcı eklentisidir.
+Eklenti, desteklenen ürün sayfalarından ürün adı, fiyat, görsel, kargo/teslimat bilgisi ve taksit/finance durumunu okuyarak ürünleri tek bir sepet arayüzünde gösterir. Sepet verileri yalnızca tarayıcınızda lokal olarak saklanır ve herhangi bir harici sunucuya gönderilmez.
 
-Bu sürüm Google Chrome için hazırlanmıştır.
+## Chrome Web Store
+
+Ortak Sepet is available on Chrome Web Store:
+
+https://chromewebstore.google.com/detail/ortak-sepet/amknllefdhkhbffnagnnmkmjebmnbanm
 
 ## Özellikler
 
-- Desteklenen e-ticaret sitelerinden ürün ekleme
-- Ürün adı, fiyat, görsel, site adı ve ürün linki gösterme
-- Genel toplam ve seçili ürün toplamı hesaplama
-- Ürün adedi artırma ve azaltma
-- Aynı ürün tekrar eklenirse yeni kart açmak yerine adedi artırma
-- Ürünleri otomatik kategorize etme
-- Kategorileri tek butonla açma ve kapatma
-- Taksit durumuna göre gruplama
-- Tek butonla tüm kayıtlı ürün fiyatlarını güncelleme
-- Fiyat yanlış okunursa manuel fiyat düzenleme
-- Kargo ve teslimat bilgisini ürün sayfasından okumaya çalışma
-- Taksit bilgisini ürün sayfasındaki görünür bilgilerden okumaya çalışma
-- Sepet verilerini tarayıcıda lokal olarak saklama
+* Desteklenen e-ticaret sitelerinden ürün ekleme
+* Türkiye ve İngiltere alışveriş siteleri için destek
+* Ürün adı, fiyat, görsel, site ve ürün linki gösterme
+* Kargo / teslimat bilgisi okuma
+* Taksit / finance bilgisi okuma
+* TL ve GBP toplamlarını ayrı ayrı hesaplama
+* Genel toplam ve seçili ürün toplamı hesaplama
+* Ürün adedi artırma ve azaltma
+* Aynı ürün tekrar eklenirse adedi artırma
+* Ürünleri otomatik kategorize etme
+* Kategoriye göre gruplama ve renkli kategori ayrımı
+* Taksit / finance olan ürünleri filtreleme
+* Kategorileri tek butonla açma ve kapatma
+* Tek butonla tüm fiyatları güncelleme
+* Manuel fiyat girme
+* CSV / Excel dışa aktarma
+* Sağ tık menüsünden ürünü sepete ekleme
+* Tarayıcı ikonunda sepetteki ürün sayısını gösterme
+* Türkçe / İngilizce dil seçimi
+* Karanlık mod desteği
+* Verileri tarayıcıda lokal olarak saklama
 
 ## Demo
 
@@ -28,99 +40,104 @@ Bu sürüm Google Chrome için hazırlanmıştır.
 
 ## Desteklenen Siteler
 
-- Amazon Türkiye
-- Hepsiburada
-- Trendyol
-- n11
-- Teknosa
-- Vatan Bilgisayar
-- MediaMarkt Türkiye
-- Pazarama
-- Çiçeksepeti
-- idefix
-- D&R
+### Türkiye
+
+* Amazon Türkiye
+* Hepsiburada
+* Trendyol
+* n11
+* Teknosa
+* Vatan Bilgisayar
+* MediaMarkt Türkiye
+* Pazarama
+* Çiçeksepeti
+* idefix
+* D&R
+* İtopya
+* İncehesap
+
+### İngiltere
+
+* Amazon UK
+* eBay UK
+* Vinted UK
+* Argos
+* Currys
+* Diesel UK
+
+## Kullanım
+
+1. Desteklenen bir ürün sayfasına gidin.
+2. Eklenti ikonuna tıklayın.
+3. Ürünü Ortak Sepet'e ekleyin.
+
+Alternatif olarak desteklenen ürün sayfalarında sağ tık menüsündeki **“Ortak Sepet’e ekle”** seçeneğini kullanabilirsiniz.
 
 ## Not
 
-Bu proje beta aşamasındadır.
-
-Fiyat, taksit, kargo ve teslimat bilgileri ürün sayfasındaki görünür bilgilerden okunur. Bazı sitelerde kargo, indirim, taksit veya teslimat bilgileri sepette ya da ödeme adımında değişebilir. Bu nedenle bilgiler kullanıcı tarafından kontrol edilmelidir.
-
-Bu proje listelenen marka, şirket veya platformlarla bağlantılı, sponsorlu, onaylı ya da resmi bir proje değildir. Marka adları yalnızca eklentinin hangi sitelerde çalışmayı hedeflediğini açıklamak amacıyla kullanılmıştır. Tüm marka adları ve ticari markalar ilgili sahiplerine aittir.
+Bu proje geliştirme aşamasındadır. Fiyat, taksit/finance, kargo ve teslimat bilgileri ürün sayfasındaki görünür bilgilerden okunur. Bazı sitelerde fiyat, kampanya, stok, kargo veya teslimat bilgileri sepette ya da ödeme adımında değişebilir. Bu nedenle satın alma öncesinde bilgiler kullanıcı tarafından kontrol edilmelidir.
 
 ## Kullanılan Teknolojiler
 
-- JavaScript
-- Chrome Extensions Manifest V3
-- Content Scripts
-- Background Service Worker
-- Chrome Extension Storage
-- DOM Parsing
-- webextension-polyfill
+* JavaScript
+* Chrome Extensions API
+* WebExtensions
+* Content Scripts
+* Background Service Worker
+* Context Menus
+* Browser Storage
+* DOM Parsing
+* HTML
+* CSS
 
 ## Geliştirme İçin Kurulum
 
-1. Chrome'da `chrome://extensions` adresine git.
-2. Sağ üstten **Developer mode** seçeneğini aç.
-3. **Load unpacked** butonuna bas.
-4. Bu proje klasörünü seç.
-5. Desteklenen bir ürün sayfasına git.
-6. Eklenti popup'ından ürünü sepete ekle.
+1. Chrome'da `chrome://extensions/` adresine gidin.
+2. Sağ üstten **Developer mode** seçeneğini açın.
+3. **Load unpacked** seçeneğine tıklayın.
+4. Proje klasörünü seçin.
+5. Desteklenen bir ürün sayfasına gidin.
+6. Eklenti popup'ından veya sağ tık menüsünden ürünü sepete ekleyin.
 
 ## Dosya Yapısı
 
+```text
 ortak-sepet-chrome/
-
 - manifest.json
 - background.js
-- browser-polyfill.js
 - content.js
+- content-uk.js
 - popup.html
 - popup.css
 - popup.js
-- README.md
-- LICENSE
-- PRIVACY.md
-
-## Chrome Manifest Notu
-
-Bu sürüm Chrome Manifest V3 yapısına göre hazırlanmıştır.
-
-Firefox sürümünden farklı olarak Chrome tarafında background işlemleri `background.service_worker` ile çalışır. `browser.*` API uyumluluğu için `webextension-polyfill` kullanılmaktadır.
-
-## Veri ve Gizlilik
-
-Bu eklenti ürün bilgilerini kullanıcının tarayıcısında lokal olarak saklar.
-
-Saklanabilecek veriler şunlardır:
-
-- Ürün adı
-- Ürün fiyatı
-- Ürün görseli
-- Ürün linki
-- Site adı
-- Ürün adedi
-- Seçili ürün durumu
-- Manuel düzenlenmiş fiyat
-- Kategori bilgisi
-- Son fiyat güncelleme durumu
-
-Ürün listesi, fiyat bilgileri, sepet verileri veya kişisel veriler herhangi bir harici sunucuya gönderilmez.
-
-Detaylı gizlilik politikası için `PRIVACY.md` dosyasını inceleyebilirsiniz.
-
-## Lisans
-
-Bu proje MIT lisansı ile lisanslanmıştır.
-
-Detaylar için `LICENSE` dosyasını inceleyebilirsiniz.
+- browser-polyfill.js
+- assets/
+```
 
 ## Planlanan İyileştirmeler
 
-- Daha fazla site testi
-- Parser doğruluğunu artırma
-- Manuel kategori düzenleme
-- Export ve import desteği
-- UI iyileştirmeleri
-- Stok durumu tespiti
-- Chrome Web Store yayını
+* Daha fazla site desteği
+* Parser doğruluğunu artırma
+* Manuel kategori düzenleme
+* JSON export / import desteği
+* Stok durumu tespiti
+* Daha gelişmiş fiyat değişim takibi
+* Parser yapısını daha modüler hale getirme
+
+## Marka ve Bağlantı Bildirimi
+
+Bu proje Amazon, Hepsiburada, Trendyol, n11, Teknosa, Vatan Bilgisayar, MediaMarkt, Pazarama, Çiçeksepeti, idefix, D&R, İtopya, İncehesap, eBay, Vinted, Argos, Currys, Diesel veya listelenen diğer platformlarla bağlantılı, sponsorlu, onaylı ya da resmi bir proje değildir.
+
+Listelenen tüm marka adları, yalnızca eklentinin hangi sitelerde çalışmayı hedeflediğini açıklamak amacıyla kullanılmıştır. Tüm marka adları ve ticari markalar ilgili sahiplerine aittir.
+
+## Veri ve Gizlilik
+
+Bu eklenti ürün bilgilerini kullanıcının tarayıcısında lokal olarak saklar. Ürün listesi, fiyat bilgileri veya sepet verileri herhangi bir harici sunucuya gönderilmez.
+
+Eklenti, desteklenen ürün sayfalarındaki görünür bilgileri okumaya çalışır. Fiyat, taksit/finance, kargo ve teslimat bilgileri bazı sitelerde sepette veya ödeme adımında değişebileceğinden, bilgiler kullanıcı tarafından kontrol edilmelidir.
+
+## Privacy Policy
+
+Privacy policy is available here:
+
+https://github.com/den1zalp/ortak-sepet-chrome/blob/main/PRIVACY.md
