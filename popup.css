@@ -566,3 +566,152 @@ body.dark-mode .category-badge {
   border-color: color-mix(in srgb, var(--category-color, #94a3b8) 58%, #111827);
   color: #e5e7eb;
 }
+
+.view-controls {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.view-control-button {
+  border: 1px solid #d1d5db;
+  border-radius: 999px;
+  padding: 7px 8px;
+  background: #ffffff;
+  color: #374151;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.view-control-button.is-active {
+  background: #111827;
+  border-color: #111827;
+  color: #ffffff;
+}
+
+.view-control-button:hover {
+  opacity: 0.92;
+}
+
+body.compact-mode .cart-item {
+  gap: 8px;
+  padding: 7px 8px;
+  margin-bottom: 7px;
+  border-radius: 12px;
+}
+
+body.compact-mode .cart-image {
+  width: 42px;
+  height: 42px;
+  border-radius: 8px;
+}
+
+body.compact-mode .title-row {
+  grid-template-columns: 16px 1fr;
+  gap: 6px;
+  margin-bottom: 5px;
+}
+
+body.compact-mode .select-checkbox {
+  width: 14px;
+  height: 14px;
+  margin-top: 0;
+}
+
+body.compact-mode .cart-title {
+  font-size: 12px;
+  line-height: 1.22;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+body.compact-mode .category-badge {
+  display: none;
+}
+
+body.compact-mode .product-details {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 8px;
+  row-gap: 2px;
+  margin-bottom: 5px;
+}
+
+body.compact-mode .detail-row {
+  display: block;
+  font-size: 11px;
+  line-height: 1.25;
+}
+
+body.compact-mode .detail-row:nth-child(n + 5) {
+  display: none;
+}
+
+body.compact-mode .detail-label {
+  margin-right: 4px;
+}
+
+body.compact-mode .line-total {
+  font-size: 11px;
+  margin-bottom: 5px;
+}
+
+body.compact-mode .quantity-row {
+  gap: 6px;
+  margin-bottom: 5px;
+}
+
+body.compact-mode .quantity-button {
+  width: 23px;
+  height: 23px;
+  border-radius: 7px;
+}
+
+body.compact-mode .quantity-text {
+  font-size: 11px;
+}
+
+body.compact-mode .cart-actions {
+  gap: 5px;
+}
+
+body.compact-mode .small-button {
+  padding: 4px 6px;
+  border-radius: 7px;
+  font-size: 10px;
+}
+
+body.compact-mode .category-group {
+  margin-top: 10px;
+  padding-top: 10px;
+}
+
+body.compact-mode .category-header {
+  margin-bottom: 7px;
+  padding: 5px 2px;
+}
+
+body.compact-mode .category-title {
+  font-size: 13px;
+}
+
+body.compact-mode .category-meta {
+  font-size: 10px;
+  max-width: 150px;
+}
+
+body.dark-mode .view-control-button {
+  background: #111827;
+  border-color: #334155;
+  color: #cbd5e1;
+}
+
+body.dark-mode .view-control-button.is-active {
+  background: #e5e7eb;
+  border-color: #e5e7eb;
+  color: #111827;
+}

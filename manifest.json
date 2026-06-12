@@ -1,13 +1,9 @@
 {
   "manifest_version": 3,
   "name": "Ortak Sepet",
-  "version": "0.2.10",
+  "version": "1.0.3",
   "description": "Türkiye ve Birleşik Krallık alışveriş siteleri için ortak alışveriş sepeti.",
-  "permissions": [
-    "storage",
-    "tabs",
-    "contextMenus"
-  ],
+  "permissions": ["storage", "tabs", "contextMenus"],
   "host_permissions": [
     "*://*.trendyol.com/*",
     "*://*.hepsiburada.com/*",
@@ -65,10 +61,7 @@
         "*://*.itopya.com/*",
         "*://*.incehesap.com/*"
       ],
-      "js": [
-        "browser-polyfill.js",
-        "content.js"
-      ],
+      "js": ["browser-polyfill.js", "content.js"],
       "run_at": "document_idle"
     },
     {
@@ -80,9 +73,7 @@
         "*://*.currys.co.uk/*",
         "*://uk.diesel.com/*"
       ],
-      "js": [
-        "content-uk.js"
-      ],
+      "js": ["content-uk.js"],
       "run_at": "document_idle"
     }
   ]

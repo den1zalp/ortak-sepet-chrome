@@ -1,5 +1,6 @@
 const CART_KEY = "ortakSepetItems";
 const VIEW_MODE_KEY = "ortakSepetViewMode";
+const COMPACT_MODE_KEY = "ortakSepetCompactMode";
 const LANGUAGE_KEY = "ortakSepetLanguage";
 const THEME_KEY = "ortakSepetTheme";
 
@@ -10,6 +11,8 @@ const installmentProductsBtn = document.getElementById(
 );
 const updateAllPricesBtn = document.getElementById("updateAllPricesBtn");
 const exportCsvBtn = document.getElementById("exportCsvBtn");
+const compactViewBtn = document.getElementById("compactViewBtn");
+const countryGroupingBtn = document.getElementById("countryGroupingBtn");
 const clearCartBtn = document.getElementById("clearCartBtn");
 const statusEl = document.getElementById("status");
 const cartItemsEl = document.getElementById("cartItems");
@@ -39,6 +42,10 @@ const I18N = {
     updateAllPrices: "Tüm Fiyatları Güncelle",
     updating: "Güncelleniyor...",
     exportCsv: "CSV / Excel Olarak Dışa Aktar",
+    compactView: "Kompakt Görünüm",
+    normalView: "Normal Görünüm",
+    countryGrouping: "Ülkeye Göre Grupla",
+    removeCountryGrouping: "Ülke Gruplamasını Kaldır",
     clearCart: "Sepeti Temizle",
     itemCount: "Ürün sayısı",
     total: "Genel toplam",
@@ -77,6 +84,10 @@ const I18N = {
     installmentAvailableGroup: "Taksit / Finance Var",
     installmentUnavailableGroup: "Taksit / Finance Yok / Bilinmiyor",
     productMeta: "{products} ürün • {quantity} adet • {total}",
+    countryTurkey: "Türkiye",
+    countryUnitedKingdom: "İngiltere",
+    groupedByCountry: "Ürünler ülkeye göre gruplandı.",
+    countryGroupingRemoved: "Ülke gruplaması kaldırıldı.",
     readingProduct: "Ürün okunuyor...",
     activeTabMissing: "Aktif sekme bulunamadı.",
     productReadFailed: "Bu sayfadan ürün okunamadı.",
@@ -130,6 +141,10 @@ const I18N = {
     updateAllPrices: "Refresh All Prices",
     updating: "Updating...",
     exportCsv: "Export as CSV / Excel",
+    compactView: "Compact View",
+    normalView: "Normal View",
+    countryGrouping: "Group by Country",
+    removeCountryGrouping: "Remove Country Grouping",
     clearCart: "Clear Basket",
     itemCount: "Item count",
     total: "Total",
@@ -168,6 +183,10 @@ const I18N = {
     installmentAvailableGroup: "Instalments / Finance Available",
     installmentUnavailableGroup: "No Instalments / Finance / Unknown",
     productMeta: "{products} products • {quantity} items • {total}",
+    countryTurkey: "Türkiye",
+    countryUnitedKingdom: "United Kingdom",
+    groupedByCountry: "Products grouped by country.",
+    countryGroupingRemoved: "Country grouping removed.",
     readingProduct: "Reading product...",
     activeTabMissing: "Active tab could not be found.",
     productReadFailed: "Product could not be read from this page.",
@@ -371,6 +390,41 @@ async function setViewMode(mode) {
   await browser.storage.local.set({
     [VIEW_MODE_KEY]: mode,
   });
+}
+
+async function getCompactMode() {
+  const result = await browser.storage.local.get(COMPACT_MODE_KEY);
+  return result[COMPACT_MODE_KEY] === true;
+}
+
+async function setCompactMode(isCompact) {
+  await browser.storage.local.set({
+    [COMPACT_MODE_KEY]: Boolean(isCompact),
+  });
+}
+
+function applyCompactMode(isCompact) {
+  document.body.classList.toggle("compact-mode", Boolean(isCompact));
+  if (compactViewBtn) {
+    compactViewBtn.classList.toggle("is-active", Boolean(isCompact));
+    compactViewBtn.textContent = isCompact
+      ? translate("normalView")
+      : translate("compactView");
+  }
+}
+
+function getItemRegion(item) {
+  if (item.region === "UK" || getItemCurrency(item) === "GBP") {
+    return "UK";
+  }
+
+  return "TR";
+}
+
+function getRegionLabel(region) {
+  return region === "UK"
+    ? translate("countryUnitedKingdom")
+    : translate("countryTurkey");
 }
 
 function setStatus(message) {
@@ -973,6 +1027,9 @@ function getCategoryColor(categoryName) {
     "Taksit Yok / Bilinmiyor": "#94a3b8",
     "Taksit / Finance Yok / Bilinmiyor": "#94a3b8",
     "No Instalments / Finance / Unknown": "#94a3b8",
+    "Türkiye": "#ef4444",
+    "İngiltere": "#2563eb",
+    "United Kingdom": "#2563eb",
     "Diğer": "#d1d5db",
   };
 
@@ -1187,6 +1244,25 @@ function groupItemsByCategory(items) {
   });
 }
 
+function groupItemsByCountry(items) {
+  const grouped = new Map();
+
+  for (const item of items) {
+    const region = getItemRegion(item);
+
+    if (!grouped.has(region)) {
+      grouped.set(region, []);
+    }
+
+    grouped.get(region).push(item);
+  }
+
+  const order = ["TR", "UK"];
+  return Array.from(grouped.entries()).sort(([regionA], [regionB]) => {
+    return order.indexOf(regionA) - order.indexOf(regionB);
+  });
+}
+
 function createCategoryGroupElement(categoryName, items) {
   const group = document.createElement("section");
   group.className = "category-group";
@@ -1253,9 +1329,21 @@ function renderInstallmentGroupedCart(items) {
   }
 }
 
+function renderCountryGroupedCart(items) {
+  const groupedItems = groupItemsByCountry(items);
+
+  for (const [region, groupItems] of groupedItems) {
+    const groupElement = createCategoryGroupElement(getRegionLabel(region), groupItems);
+    cartItemsEl.appendChild(groupElement);
+  }
+}
+
 async function renderCart() {
   const items = await getCartItems();
   const viewMode = await getViewMode();
+  const compactMode = await getCompactMode();
+
+  applyCompactMode(compactMode);
 
   cartItemsEl.innerHTML = "";
   itemCountEl.textContent = String(calculateTotalItemCount(items));
@@ -1270,6 +1358,15 @@ async function renderCart() {
       ? translate("removeInstallmentGrouping")
       : translate("installmentProducts");
 
+  countryGroupingBtn.textContent =
+    viewMode === "country"
+      ? translate("removeCountryGrouping")
+      : translate("countryGrouping");
+
+  countryGroupingBtn.classList.toggle("is-active", viewMode === "country");
+  categorizeProductsBtn.classList.toggle("is-active", viewMode === "category");
+  installmentProductsBtn.classList.toggle("is-active", viewMode === "installment");
+
   if (items.length === 0) {
     const empty = document.createElement("div");
     empty.className = "empty";
@@ -1280,6 +1377,11 @@ async function renderCart() {
 
   if (viewMode === "installment") {
     renderInstallmentGroupedCart(items);
+    return;
+  }
+
+  if (viewMode === "country") {
+    renderCountryGroupedCart(items);
     return;
   }
 
@@ -1485,6 +1587,34 @@ async function toggleInstallmentGrouping() {
   await renderCart();
 }
 
+async function toggleCountryGrouping() {
+  const items = await getCartItems();
+
+  if (items.length === 0) {
+    setStatus(translate("noItemsToGroup"));
+    return;
+  }
+
+  const viewMode = await getViewMode();
+
+  if (viewMode === "country") {
+    await setViewMode("normal");
+    setStatus(translate("countryGroupingRemoved"));
+    await renderCart();
+    return;
+  }
+
+  await setViewMode("country");
+  setStatus(translate("groupedByCountry"));
+  await renderCart();
+}
+
+async function toggleCompactMode() {
+  const isCompact = await getCompactMode();
+  await setCompactMode(!isCompact);
+  applyCompactMode(!isCompact);
+}
+
 async function updateAllPrices() {
   const items = await getCartItems();
 
@@ -1499,6 +1629,8 @@ async function updateAllPrices() {
   installmentProductsBtn.disabled = true;
   clearCartBtn.disabled = true;
   exportCsvBtn.disabled = true;
+  countryGroupingBtn.disabled = true;
+  compactViewBtn.disabled = true;
 
   updateAllPricesBtn.textContent = translate("updating");
   setStatus(translate("pricesUpdating"));
@@ -1525,6 +1657,8 @@ async function updateAllPrices() {
     installmentProductsBtn.disabled = false;
     clearCartBtn.disabled = false;
     exportCsvBtn.disabled = false;
+    countryGroupingBtn.disabled = false;
+    compactViewBtn.disabled = false;
 
     updateAllPricesBtn.textContent = translate("updateAllPrices");
     await renderCart();
@@ -1728,6 +1862,8 @@ categorizeProductsBtn.addEventListener("click", categorizeProducts);
 installmentProductsBtn.addEventListener("click", toggleInstallmentGrouping);
 updateAllPricesBtn.addEventListener("click", updateAllPrices);
 exportCsvBtn.addEventListener("click", exportCartAsCsv);
+countryGroupingBtn.addEventListener("click", toggleCountryGrouping);
+compactViewBtn.addEventListener("click", toggleCompactMode);
 clearCartBtn.addEventListener("click", clearCart);
 languageSelect.addEventListener("change", async () => {
   await setLanguage(languageSelect.value);

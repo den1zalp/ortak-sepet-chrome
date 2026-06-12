@@ -13,26 +13,107 @@ function cleanText(text) {
   return String(text).replace(/\s+/g, " ").trim();
 }
 
+
+function parseTryPriceNumber(priceText) {
+  if (!priceText) return null;
+
+  let cleaned = String(priceText)
+    .replace(/TL|TRY/gi, "")
+    .replace(/₺/g, "")
+    .replace(/\s/g, "")
+    .trim();
+
+  const commaIndex = cleaned.lastIndexOf(",");
+  const dotIndex = cleaned.lastIndexOf(".");
+
+  if (commaIndex !== -1 && dotIndex !== -1) {
+    if (commaIndex > dotIndex) {
+      cleaned = cleaned.replace(/\./g, "").replace(",", ".");
+    } else {
+      cleaned = cleaned.replace(/,/g, "");
+    }
+  } else if (commaIndex !== -1) {
+    cleaned = cleaned.replace(",", ".");
+  } else if (dotIndex !== -1) {
+    const parts = cleaned.split(".");
+    const allGroupsAfterFirstAreThreeDigits =
+      parts.length > 1 && parts.slice(1).every((part) => part.length === 3);
+
+    if (allGroupsAfterFirstAreThreeDigits) {
+      cleaned = cleaned.replace(/\./g, "");
+    }
+  }
+
+  const number = Number.parseFloat(cleaned);
+  return Number.isNaN(number) ? null : number;
+}
+
+function normalizeSplitTryPriceText(text) {
+  return cleanText(text)
+    // Some stores render decimal parts in separate DOM nodes: "4.499 10 TL".
+    .replace(/(\d{1,3}(?:[.]\d{3})+)\s+(\d{1,2})\s*(TL|₺)/gi, "$1,$2 TL")
+    // Same issue without thousand dots: "4 499 10 TL".
+    .replace(/\b(\d{1,3})\s+(\d{3})\s+(\d{1,2})\s*(TL|₺)\b/gi, "$1.$2,$3 TL")
+    // Split thousand group: "4 999 TL".
+    .replace(/\b(\d{1,3})\s+(\d{3})\s*(TL|₺)\b/gi, "$1.$2 TL");
+}
+
+function extractTryPriceCandidates(rawPrice) {
+  const text = normalizeSplitTryPriceText(rawPrice);
+  if (!text) return [];
+
+  const regex = /₺\s*\d{1,3}(?:[.]\d{3})*(?:,\d{1,2})?|\d{1,3}(?:[.]\d{3})+(?:,\d{1,2})?\s*(?:TL|₺)?|\d+(?:,\d{1,2})\s*(?:TL|₺)?|\d+\s*(?:TL|₺)/gi;
+
+  const candidates = [];
+  let match;
+
+  while ((match = regex.exec(text)) !== null) {
+    const raw = cleanText(match[0]);
+    const before = text.slice(Math.max(0, match.index - 3), match.index);
+    const after = text.slice(match.index + raw.length, match.index + raw.length + 8);
+
+    if (/%\s*$/.test(before) || /^\s*%/.test(after)) continue;
+
+    const value = parseTryPriceNumber(raw);
+    if (value === null || value <= 0) continue;
+
+    const formatted = /TL|₺/i.test(raw) ? raw.replace(/₺\s*/, "") : `${raw} TL`;
+
+    candidates.push({
+      text: cleanText(formatted),
+      value,
+      index: match.index,
+    });
+  }
+
+  return candidates;
+}
+
+function getBestTrendyolPriceFromText(text) {
+  const normalized = normalizeSplitTryPriceText(text);
+  const candidates = extractTryPriceCandidates(normalized);
+
+  if (candidates.length === 0) return null;
+
+  const sepetteIndex = normalized.toLocaleLowerCase("tr-TR").indexOf("sepette");
+
+  if (sepetteIndex !== -1) {
+    const afterSepette = candidates.find((candidate) => candidate.index > sepetteIndex);
+    if (afterSepette) return afterSepette;
+  }
+
+  return candidates[0];
+}
+
 function cleanPrice(rawPrice) {
   if (!rawPrice) return null;
 
-  const text = cleanText(rawPrice);
+  const candidates = extractTryPriceCandidates(rawPrice);
+  if (candidates.length === 0) return null;
 
-  const matches = text.match(
-    /₺\s*\d{1,3}(?:[.\s]\d{3})*(?:,\d{1,2})?|\d{1,3}(?:[.\s]\d{3})*(?:,\d{1,2})?\s*(?:TL|₺)?|\d+(?:[.,]\d{1,2})?\s*(?:TL|₺)?/gi,
-  );
-
-  if (!matches || matches.length === 0) return null;
-
-  const priceWithCurrency = matches.find((match) => /TL|₺/i.test(match));
-  let cleaned = cleanText(priceWithCurrency || matches[0]);
-
-  if (!/TL|₺/i.test(cleaned)) {
-    cleaned = `${cleaned} TL`;
-  }
-
-  return cleaned;
+  return candidates[0].text;
 }
+
 
 function getSiteName() {
   const host = window.location.hostname.replace("www.", "");
@@ -185,8 +266,100 @@ function findN11InstallmentInfo() {
     installmentText: "Taksit bilgisi bulunamadı",
   };
 }
+function findTrendyolInstallmentInfo() {
+  const titleElement =
+    document.querySelector("h1") ||
+    document.querySelector(".pr-new-br") ||
+    document.querySelector("[class*='product-title']");
+
+  const titleRect = titleElement ? titleElement.getBoundingClientRect() : null;
+
+  const elements = Array.from(
+    document.querySelectorAll("button, a, span, div, p, li"),
+  );
+
+  const positivePatterns = [
+    /\d+\s*aya?\s*varan\s*taksit/i,
+    /\d+\s*taksit\s*firsati/i,
+    /taksit\s*firsati/i,
+    /pesin\s*fiyatina\s*\d+\s*taksit/i,
+    /aylik\s*[\d.,]+\s*tl'?den\s*basla/i,
+    /aylik\s*[\d.,]+\s*tl'?den\s*baslayan/i,
+    /kartlara\s*\d+\s*taksit/i,
+    /kredi\s*kartina\s*taksit/i,
+  ];
+
+  const negativePatterns = [
+    /taksit\s*yok/i,
+    /taksit\s*yapilamaz/i,
+    /taksit\s*uygulanmaz/i,
+    /taksit\s*secenegi\s*bulunmamaktadir/i,
+  ];
+
+  const candidates = elements
+    .filter((element) => {
+      if (!isVisibleElement(element)) return false;
+
+      const text = cleanText(element.textContent);
+      if (!text || text.length > 260) return false;
+
+      const normalized = normalizeInstallmentText(text);
+      if (!/taksit|aylik|pesin fiyatina|kredi karti|kartlara/i.test(normalized)) {
+        return false;
+      }
+
+      const rect = element.getBoundingClientRect();
+
+      if (titleRect) {
+        if (rect.top < titleRect.bottom - 120) return false;
+        if (rect.top > titleRect.bottom + 1100) return false;
+      }
+
+      return true;
+    })
+    .map((element) => ({
+      text: cleanText(element.textContent),
+      contextText: getNearbyText(element, 3),
+    }));
+
+  const negativeMatch = candidates.find((candidate) => {
+    const normalizedContext = normalizeInstallmentText(candidate.contextText);
+    return negativePatterns.some((pattern) => pattern.test(normalizedContext));
+  });
+
+  if (negativeMatch) {
+    return {
+      installmentAvailable: false,
+      installmentText: "Taksit yok",
+    };
+  }
+
+  const positiveMatch = candidates.find((candidate) => {
+    const normalizedText = normalizeInstallmentText(candidate.text);
+    const normalizedContext = normalizeInstallmentText(candidate.contextText);
+
+    return positivePatterns.some(
+      (pattern) => pattern.test(normalizedText) || pattern.test(normalizedContext),
+    );
+  });
+
+  if (positiveMatch) {
+    return {
+      installmentAvailable: true,
+      installmentText: "Taksit var",
+    };
+  }
+
+  return null;
+}
+
 function findInstallmentInfo() {
   const host = window.location.hostname;
+
+  if (host.includes("trendyol")) {
+    const trendyolInstallmentInfo = findTrendyolInstallmentInfo();
+    if (trendyolInstallmentInfo) return trendyolInstallmentInfo;
+  }
 
   if (host.includes("n11")) {
     return findN11InstallmentInfo();
@@ -237,6 +410,9 @@ function findInstallmentInfo() {
     return (
       /pesin fiyatina\s*\d+\s*taksit/i.test(normalized) ||
       /pesin fiyatina\s*\d+\s*x/i.test(normalized) ||
+      /\d+\s*aya?\s*varan\s*taksit/i.test(normalized) ||
+      /taksit\s*firsati/i.test(normalized) ||
+      /aylik\s*[\d.,]+\s*tl'?den\s*basla/i.test(normalized) ||
       /\d+\s*taksit/i.test(normalized) ||
       /tl'?den baslayan taksitlerle/i.test(normalized) ||
       /den baslayan taksitlerle/i.test(normalized) ||
@@ -755,38 +931,97 @@ function findTrendyolMainPrice() {
 
   const titleRect = titleElement ? titleElement.getBoundingClientRect() : null;
 
+  const preferredSelectors = [
+    ".prc-dsc",
+    ".prc-slg",
+    "[class*='prc-dsc']",
+    "[class*='prc-slg']",
+    "[class*='product-price']",
+    "[class*='price-container']",
+    "[class*='Price']",
+    "[class*='price']",
+  ];
+
+  const selectorCandidates = [];
+
+  for (const selector of preferredSelectors) {
+    const selectedElements = Array.from(document.querySelectorAll(selector));
+
+    for (const element of selectedElements) {
+      if (!isVisibleElement(element)) continue;
+
+      const text = cleanText(element.textContent);
+      const bestPrice = getBestTrendyolPriceFromText(text);
+      if (!bestPrice) continue;
+
+      const rect = element.getBoundingClientRect();
+
+      if (titleRect) {
+        if (rect.top < titleRect.bottom - 140) continue;
+        if (rect.top > titleRect.bottom + 560) continue;
+      }
+
+      if (rect.left < window.innerWidth * 0.22) continue;
+      if (rect.left > window.innerWidth * 0.88) continue;
+
+      const style = window.getComputedStyle(element);
+      const fontSize = Number.parseFloat(style.fontSize) || 0;
+      const fontWeight = Number.parseInt(style.fontWeight, 10) || 400;
+
+      let score = 500;
+      score += fontSize * 16;
+      score += fontWeight / 50;
+
+      if (/sepette|indirimli|fiyat/i.test(text)) score += 90;
+      if (/taksit|kargo|teslimat|kupon|kampanya|puan|favori|değerlendirme|degerlendirme|satıcı|satici|ay|başlayan|baslayan/i.test(text)) {
+        score -= 260;
+      }
+
+      if (titleRect) {
+        const distanceFromTitle = Math.abs(rect.top - titleRect.bottom);
+        score += Math.max(0, 300 - distanceFromTitle);
+      }
+
+      selectorCandidates.push({
+        text: bestPrice.text,
+        score,
+      });
+    }
+  }
+
+  if (selectorCandidates.length > 0) {
+    selectorCandidates.sort((a, b) => b.score - a.score);
+    return selectorCandidates[0].text;
+  }
+
   const elements = Array.from(
     document.querySelectorAll("span, div, p, strong"),
   );
 
   const candidates = elements
-    .filter((element) => {
-      if (!isVisibleElement(element)) return false;
+    .map((element) => {
+      if (!isVisibleElement(element)) return null;
 
       const text = cleanText(element.textContent);
+      const bestPrice = getBestTrendyolPriceFromText(text);
 
-      if (!looksLikeTryPrice(text)) return false;
-      if (hasChildWithPriceText(element)) return false;
-      if (text.length > 90) return false;
+      if (!bestPrice) return null;
+      if (hasChildWithPriceText(element)) return null;
+      if (text.length > 140) return null;
 
       const rect = element.getBoundingClientRect();
 
       if (titleRect) {
-        if (rect.top < titleRect.bottom - 100) return false;
-        if (rect.top > titleRect.bottom + 520) return false;
+        if (rect.top < titleRect.bottom - 100) return null;
+        if (rect.top > titleRect.bottom + 520) return null;
       }
 
-      if (rect.left < window.innerWidth * 0.25) return false;
-      if (rect.left > window.innerWidth * 0.85) return false;
+      if (rect.left < window.innerWidth * 0.25) return null;
+      if (rect.left > window.innerWidth * 0.85) return null;
 
-      return true;
-    })
-    .map((element) => {
-      const rect = element.getBoundingClientRect();
       const style = window.getComputedStyle(element);
       const fontSize = Number.parseFloat(style.fontSize) || 0;
       const fontWeight = Number.parseInt(style.fontWeight, 10) || 400;
-      const text = cleanText(element.textContent);
 
       let score = 0;
 
@@ -809,14 +1044,16 @@ function findTrendyolMainPrice() {
       }
 
       return {
-        text,
+        text: bestPrice.text,
         score,
       };
     })
+    .filter(Boolean)
     .sort((a, b) => b.score - a.score);
 
   return candidates[0]?.text || "";
 }
+
 function findTrendyolMainImage() {
   const title =
     cleanText(getText(".pr-new-br")) ||
