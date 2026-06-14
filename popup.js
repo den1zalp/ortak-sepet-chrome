@@ -56,6 +56,11 @@ const I18N = {
     noProductTitle: "Ürün adı yok",
     unknownSite: "Bilinmeyen site",
     priceReadFailed: "Fiyat okunamadı",
+    priceUnavailable: "Ana fiyat yok",
+    stockStatus: "Durum",
+    noActiveOffer: "Satışta değil / satın alma seçeneklerinde",
+    subtotalNotIncluded: "Ara toplam: Toplama dahil edilmedi",
+    productAddedWithoutPrice: "Ürün eklendi, ancak ana satış fiyatı bulunamadı. Fiyat toplama dahil edilmedi.",
     site: "Site",
     price: "Fiyat",
     source: "Kaynak",
@@ -76,6 +81,7 @@ const I18N = {
     lastFailed: "Başarısız",
     lastManual: "Manuel",
     lastManualKept: "Manuel korundu",
+    lastUnavailable: "Ana fiyat yok",
     lastSuccess: "Başarılı",
     quantity: "Adet: {quantity}",
     goToLink: "Linke Git",
@@ -155,6 +161,11 @@ const I18N = {
     noProductTitle: "No product title",
     unknownSite: "Unknown site",
     priceReadFailed: "Price could not be read",
+    priceUnavailable: "No main price",
+    stockStatus: "Status",
+    noActiveOffer: "Unavailable / buying options only",
+    subtotalNotIncluded: "Subtotal: Not included in total",
+    productAddedWithoutPrice: "Product added, but the main selling price was not available. It was not included in totals.",
     site: "Site",
     price: "Price",
     source: "Source",
@@ -175,6 +186,7 @@ const I18N = {
     lastFailed: "Failed",
     lastManual: "Manual",
     lastManualKept: "Manual kept",
+    lastUnavailable: "No main price",
     lastSuccess: "Successful",
     quantity: "Qty: {quantity}",
     goToLink: "Open Link",
@@ -949,11 +961,32 @@ function getShippingDisplay(item) {
   };
 }
 
+function hasUnavailableMainPrice(item) {
+  return (
+    item?.priceReadStatus === "unavailable" ||
+    item?.priceUnavailableReason === "noActiveOffer" ||
+    item?.stockAvailable === false
+  );
+}
+
+function getPriceDisplayText(item) {
+  if (item.price) return item.price;
+  if (hasUnavailableMainPrice(item)) return translate("priceUnavailable");
+  return translate("priceReadFailed");
+}
+
+function getStockDisplayText(item) {
+  if (!hasUnavailableMainPrice(item)) return null;
+  return translate("noActiveOffer");
+}
+
 function getItemLineTotal(item) {
   const itemTotal = calculateItemTotal(item);
 
   if (itemTotal === null) {
-    return translate("subtotalUnavailable");
+    return hasUnavailableMainPrice(item)
+      ? translate("subtotalNotIncluded")
+      : translate("subtotalUnavailable");
   }
 
   return translate("subtotal", { total: formatPriceByCurrency(itemTotal, getItemCurrency(item)) });
@@ -972,6 +1005,10 @@ function getLastUpdateText(item) {
 
   if (item.lastUpdateStatus === "manual-kept") {
     return translate("lastManualKept");
+  }
+
+  if (item.lastUpdateStatus === "unavailable") {
+    return translate("lastUnavailable");
   }
 
   return translate("lastSuccess");
@@ -1106,8 +1143,13 @@ function createCartItemElement(item) {
   );
 
   details.appendChild(
-    createDetailRow(translate("price"), item.price || translate("priceReadFailed"), true),
+    createDetailRow(translate("price"), getPriceDisplayText(item), Boolean(item.price)),
   );
+
+  const stockDisplayText = getStockDisplayText(item);
+  if (stockDisplayText) {
+    details.appendChild(createDetailRow(translate("stockStatus"), stockDisplayText, false));
+  }
 
   if (item.manualPrice === true) {
     details.appendChild(createDetailRow(translate("source"), translate("manual"), true));
@@ -1468,9 +1510,17 @@ async function addCurrentProduct() {
       if (existingItem.manualPrice === true) {
         existingItem.detectedPrice =
           response.product.price || existingItem.detectedPrice;
-      } else {
-        existingItem.price = response.product.price || existingItem.price;
+      } else if (response.product.price) {
+        existingItem.price = response.product.price;
+      } else if (response.product.priceReadStatus === "unavailable") {
+        existingItem.previousPrice = existingItem.price || existingItem.previousPrice;
+        existingItem.price = null;
       }
+
+      existingItem.priceReadStatus = response.product.priceReadStatus || existingItem.priceReadStatus || null;
+      existingItem.priceUnavailableReason = response.product.priceUnavailableReason || existingItem.priceUnavailableReason || null;
+      existingItem.stockAvailable = response.product.stockAvailable ?? existingItem.stockAvailable ?? null;
+      existingItem.stockText = response.product.stockText || existingItem.stockText || "";
 
       existingItem.image = response.product.image || existingItem.image;
       existingItem.currency = response.product.currency || detectCurrencyFromPrice(existingItem.price);
@@ -1494,7 +1544,11 @@ async function addCurrentProduct() {
 
       await saveCartItems(items);
 
-      setStatus(translate("duplicateAdded"));
+      setStatus(
+        response.product.price
+          ? translate("duplicateAdded")
+          : translate("productAddedWithoutPrice"),
+      );
       await renderCart();
       return;
     }
@@ -1516,7 +1570,11 @@ async function addCurrentProduct() {
     items.push(newItem);
     await saveCartItems(items);
 
-    setStatus(translate("productAdded"));
+    setStatus(
+      response.product.price
+        ? translate("productAdded")
+        : translate("productAddedWithoutPrice"),
+    );
     await renderCart();
   } catch (error) {
     setStatus(translate("unsupportedPage"));

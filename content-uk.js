@@ -575,16 +575,107 @@ function getTextBySelectors(selectors) {
   return "";
 }
 
+
+function formatGbpCurrencyFromNumber(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number) || number <= 0) return null;
+
+  return `£${number.toFixed(2)}`;
+}
+
+function cleanAmazonGbpPrice(rawPrice) {
+  const cleaned = cleanPrice(rawPrice);
+  if (cleaned) return cleaned;
+
+  const raw = cleanText(rawPrice);
+  if (!raw) return null;
+
+  const numericMatch = raw.match(/\b\d+(?:[.]\d{1,2})\b/);
+  if (!numericMatch) return null;
+
+  return formatGbpCurrencyFromNumber(Number.parseFloat(numericMatch[0]));
+}
+
+function getAmazonUkMainAreaText() {
+  const selectors = [
+    "#rightCol",
+    "#centerCol",
+    "#desktop_buybox",
+    "#buybox",
+    "#availability",
+    "#merchant-info",
+    "#corePrice_feature_div",
+    "#corePriceDisplay_desktop_feature_div",
+    "#apex_desktop",
+  ];
+
+  return cleanText(
+    selectors
+      .map((selector) => document.querySelector(selector)?.innerText || "")
+      .filter(Boolean)
+      .join(" "),
+  );
+}
+
+function isAmazonUkMainOfferUnavailable() {
+  const text = getAmazonUkMainAreaText().toLowerCase();
+
+  return /see all buying options|currently unavailable|temporarily out of stock|out of stock|unavailable|higher than typical price/i.test(text);
+}
+
+function findAmazonUkMainPrice() {
+  const scopedSelectors = [
+    "#corePrice_feature_div .a-price .a-offscreen",
+    "#corePriceDisplay_desktop_feature_div .a-price .a-offscreen",
+    "#apex_desktop .a-price .a-offscreen",
+    "#corePrice_feature_div #priceblock_ourprice",
+    "#corePrice_feature_div #priceblock_dealprice",
+    "#corePrice_feature_div #price_inside_buybox",
+    "#priceblock_ourprice",
+    "#priceblock_dealprice",
+    "#price_inside_buybox",
+    "#newBuyBoxPrice",
+    "#tp_price_block_total_price_ww .a-offscreen",
+    "#sns-base-price .a-offscreen",
+  ];
+
+  for (const selector of scopedSelectors) {
+    const elements = Array.from(document.querySelectorAll(selector));
+
+    for (const element of elements) {
+      const text = cleanText(element.textContent || element.getAttribute("content") || "");
+      const price = cleanAmazonGbpPrice(text);
+
+      if (price) return price;
+    }
+  }
+
+  const metaPrice =
+    cleanAmazonGbpPrice(getAttr("meta[property='product:price:amount']", "content")) ||
+    cleanAmazonGbpPrice(getAttr("meta[property='og:price:amount']", "content"));
+
+  if (metaPrice) return metaPrice;
+
+  // Do not scan the whole page on Amazon. Recommendation carousel prices are
+  // commonly shown when the main product is unavailable or has no direct offer.
+  if (isAmazonUkMainOfferUnavailable()) return null;
+
+  return null;
+}
+
 function parseAmazonUk() {
+  const mainPrice = findAmazonUkMainPrice();
+  const offerUnavailable = !mainPrice && isAmazonUkMainOfferUnavailable();
+
   return {
     site: "Amazon UK",
     title: cleanText(getText("#productTitle")) || cleanText(getText("h1")),
-    price:
-      cleanPrice(getText(".a-price .a-offscreen")) ||
-      cleanPrice(getText("#corePrice_feature_div .a-offscreen")) ||
-      cleanPrice(getText("#priceblock_ourprice")) ||
-      cleanPrice(getText("#priceblock_dealprice")) ||
-      cleanPrice(findMainPrice()),
+    price: mainPrice,
+    preventPriceFallback: true,
+    priceReadStatus: offerUnavailable ? "unavailable" : mainPrice ? "ok" : null,
+    priceUnavailableReason: offerUnavailable ? "noActiveOffer" : null,
+    stockAvailable: offerUnavailable ? false : null,
+    stockText: offerUnavailable ? "noActiveOffer" : "",
     image:
       getAttr("#landingImage", "src") ||
       getAttr("#imgBlkFront", "src") ||
@@ -851,7 +942,11 @@ function normalizeProduct(product) {
   return {
     site: product?.site || fallback.site || getSiteName(),
     title: product?.title || fallback.title || cleanText(document.title),
-    price: product?.price || fallback.price || null,
+    price: product?.price || (product?.preventPriceFallback === true ? null : fallback.price) || null,
+    priceReadStatus: product?.priceReadStatus || fallback.priceReadStatus || null,
+    priceUnavailableReason: product?.priceUnavailableReason || fallback.priceUnavailableReason || null,
+    stockAvailable: product?.stockAvailable ?? fallback.stockAvailable ?? null,
+    stockText: product?.stockText || fallback.stockText || "",
     image: product?.image || fallback.image || "",
     url: product?.url || window.location.href,
 

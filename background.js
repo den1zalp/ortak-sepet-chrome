@@ -59,8 +59,16 @@ function detectCurrencyFromPrice(priceText) {
   return "TRY";
 }
 
+function hasUnavailableMainPrice(product) {
+  return (
+    product?.priceReadStatus === "unavailable" ||
+    product?.priceUnavailableReason === "noActiveOffer" ||
+    product?.stockAvailable === false
+  );
+}
+
 async function addProductToCart(product) {
-  if (!product || !product.title || !product.price) {
+  if (!product || !product.title || (!product.price && !hasUnavailableMainPrice(product))) {
     throw new Error("Ürün bilgisi okunamadı.");
   }
 
@@ -78,9 +86,17 @@ async function addProductToCart(product) {
 
     if (existingItem.manualPrice === true) {
       existingItem.detectedPrice = product.price || existingItem.detectedPrice;
-    } else {
-      existingItem.price = product.price || existingItem.price;
+    } else if (product.price) {
+      existingItem.price = product.price;
+    } else if (hasUnavailableMainPrice(product)) {
+      existingItem.previousPrice = existingItem.price || existingItem.previousPrice;
+      existingItem.price = null;
     }
+
+    existingItem.priceReadStatus = product.priceReadStatus || existingItem.priceReadStatus || null;
+    existingItem.priceUnavailableReason = product.priceUnavailableReason || existingItem.priceUnavailableReason || null;
+    existingItem.stockAvailable = product.stockAvailable ?? existingItem.stockAvailable ?? null;
+    existingItem.stockText = product.stockText || existingItem.stockText || "";
 
     existingItem.image = product.image || existingItem.image;
     existingItem.currency = product.currency || detectCurrencyFromPrice(existingItem.price);
@@ -299,7 +315,7 @@ async function readProductFromTabWithRetry(tabId, attempts = 10, waitMs = 900) {
         response.ok &&
         response.product &&
         response.product.title &&
-        response.product.price
+        (response.product.price || hasUnavailableMainPrice(response.product))
       ) {
         return response.product;
       }
@@ -340,12 +356,13 @@ async function updateSingleItem(item) {
     const freshProduct = await readProductFromTabWithRetry(tab.id);
 
     const oldPrice = item.price || null;
-    const detectedPrice =
-      freshProduct.price || item.detectedPrice || item.price || null;
-
     const keepManualPrice = item.manualPrice === true;
+    const productUnavailable = hasUnavailableMainPrice(freshProduct) && !freshProduct.price;
+    const detectedPrice = productUnavailable
+      ? null
+      : freshProduct.price || item.detectedPrice || item.price || null;
     const newPrice = keepManualPrice ? item.price : detectedPrice;
-    const priceChanged = keepManualPrice
+    const priceChanged = keepManualPrice || productUnavailable
       ? false
       : !arePricesEqual(oldPrice, newPrice);
 
@@ -358,9 +375,13 @@ async function updateSingleItem(item) {
         ...item,
 
         title: freshProduct.title || item.title,
-        price: newPrice,
+        price: productUnavailable && !keepManualPrice ? null : newPrice,
         detectedPrice,
         manualPrice: keepManualPrice,
+        priceReadStatus: freshProduct.priceReadStatus || (productUnavailable ? "unavailable" : item.priceReadStatus || null),
+        priceUnavailableReason: freshProduct.priceUnavailableReason || (productUnavailable ? "noActiveOffer" : item.priceUnavailableReason || null),
+        stockAvailable: freshProduct.stockAvailable ?? (productUnavailable ? false : item.stockAvailable ?? null),
+        stockText: freshProduct.stockText || (productUnavailable ? "noActiveOffer" : item.stockText || ""),
         image: freshProduct.image || item.image,
         site: freshProduct.site || item.site,
         url: item.url,
@@ -374,9 +395,9 @@ async function updateSingleItem(item) {
         shippingSource: freshProduct.shippingSource,
         shippingConfidence: freshProduct.shippingConfidence,
 
-        previousPrice: priceChanged ? oldPrice : item.previousPrice,
+        previousPrice: productUnavailable && oldPrice ? oldPrice : priceChanged ? oldPrice : item.previousPrice,
         lastCheckedAt: new Date().toISOString(),
-        lastUpdateStatus: keepManualPrice ? "manual-kept" : "success",
+        lastUpdateStatus: productUnavailable && !keepManualPrice ? "unavailable" : keepManualPrice ? "manual-kept" : "success",
         lastUpdateError: null,
       },
     };
