@@ -329,6 +329,32 @@ async function readProductFromTabWithRetry(tabId, attempts = 10, waitMs = 900) {
   throw new Error("Ürün bilgisi veya fiyat okunamadı.");
 }
 
+function isUnknownInstallmentInfo(product) {
+  if (!product) return true;
+
+  const text = cleanText(product.installmentText || "").toLocaleLowerCase("tr-TR");
+
+  return (
+    product.installmentAvailable === null ||
+    product.installmentAvailable === undefined ||
+    text.includes("bilgisi bulunamadı") ||
+    text.includes("bilinmiyor") ||
+    text.includes("unknown")
+  );
+}
+
+function mergeInstallmentAvailable(freshProduct, currentItem) {
+  return isUnknownInstallmentInfo(freshProduct)
+    ? currentItem.installmentAvailable
+    : freshProduct.installmentAvailable;
+}
+
+function mergeInstallmentText(freshProduct, currentItem) {
+  return isUnknownInstallmentInfo(freshProduct)
+    ? currentItem.installmentText
+    : freshProduct.installmentText;
+}
+
 async function updateSingleItem(item) {
   if (!item.url) {
     return {
@@ -386,8 +412,8 @@ async function updateSingleItem(item) {
         site: freshProduct.site || item.site,
         url: item.url,
 
-        installmentAvailable: freshProduct.installmentAvailable,
-        installmentText: freshProduct.installmentText,
+        installmentAvailable: mergeInstallmentAvailable(freshProduct, item),
+        installmentText: mergeInstallmentText(freshProduct, item),
 
         shippingAvailable: freshProduct.shippingAvailable,
         freeShipping: freshProduct.freeShipping,

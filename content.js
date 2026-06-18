@@ -283,8 +283,11 @@ function findTrendyolInstallmentInfo() {
     /\d+\s*taksit\s*firsati/i,
     /taksit\s*firsati/i,
     /pesin\s*fiyatina\s*\d+\s*taksit/i,
+    /pesin\s*fiyatina\s*\d+\s*x/i,
+    /peşin\s*fiyatına\s*\d+\s*taksit/i,
     /aylik\s*[\d.,]+\s*tl'?den\s*basla/i,
     /aylik\s*[\d.,]+\s*tl'?den\s*baslayan/i,
+    /\d+\s*x\s*[\d.,]+\s*tl/i,
     /kartlara\s*\d+\s*taksit/i,
     /kredi\s*kartina\s*taksit/i,
   ];
@@ -296,23 +299,33 @@ function findTrendyolInstallmentInfo() {
     /taksit\s*secenegi\s*bulunmamaktadir/i,
   ];
 
+  function hasPositiveInstallmentText(text) {
+    const normalized = normalizeInstallmentText(text);
+    return positivePatterns.some((pattern) => pattern.test(normalized));
+  }
+
+  function hasNegativeInstallmentText(text) {
+    const normalized = normalizeInstallmentText(text);
+    return negativePatterns.some((pattern) => pattern.test(normalized));
+  }
+
   const candidates = elements
     .filter((element) => {
       if (!isVisibleElement(element)) return false;
 
       const text = cleanText(element.textContent);
-      if (!text || text.length > 260) return false;
+      if (!text || text.length > 320) return false;
 
       const normalized = normalizeInstallmentText(text);
-      if (!/taksit|aylik|pesin fiyatina|kredi karti|kartlara/i.test(normalized)) {
+      if (!/taksit|aylik|pesin fiyatina|peşin fiyatına|kredi karti|kartlara|\d+\s*x\s*[\d.,]+\s*tl/i.test(normalized)) {
         return false;
       }
 
       const rect = element.getBoundingClientRect();
 
       if (titleRect) {
-        if (rect.top < titleRect.bottom - 120) return false;
-        if (rect.top > titleRect.bottom + 1100) return false;
+        if (rect.top < titleRect.bottom - 140) return false;
+        if (rect.top > titleRect.bottom + 1250) return false;
       }
 
       return true;
@@ -322,10 +335,9 @@ function findTrendyolInstallmentInfo() {
       contextText: getNearbyText(element, 3),
     }));
 
-  const negativeMatch = candidates.find((candidate) => {
-    const normalizedContext = normalizeInstallmentText(candidate.contextText);
-    return negativePatterns.some((pattern) => pattern.test(normalizedContext));
-  });
+  const negativeMatch = candidates.find((candidate) =>
+    hasNegativeInstallmentText(candidate.contextText),
+  );
 
   if (negativeMatch) {
     return {
@@ -334,16 +346,40 @@ function findTrendyolInstallmentInfo() {
     };
   }
 
-  const positiveMatch = candidates.find((candidate) => {
-    const normalizedText = normalizeInstallmentText(candidate.text);
-    const normalizedContext = normalizeInstallmentText(candidate.contextText);
-
-    return positivePatterns.some(
-      (pattern) => pattern.test(normalizedText) || pattern.test(normalizedContext),
-    );
-  });
+  const positiveMatch = candidates.find((candidate) =>
+    hasPositiveInstallmentText(`${candidate.text} ${candidate.contextText}`),
+  );
 
   if (positiveMatch) {
+    return {
+      installmentAvailable: true,
+      installmentText: "Taksit var",
+    };
+  }
+
+  // Trendyol sometimes renders the payment option differently in background tabs.
+  // As a fallback, scan a limited product/payment area instead of relying only on visible nodes.
+  const scopedText = cleanText(
+    [
+      document.querySelector("[class*='payment']")?.textContent,
+      document.querySelector("[class*='Payment']")?.textContent,
+      document.querySelector("[class*='product-detail']")?.textContent,
+      document.querySelector("main")?.textContent,
+      document.body?.textContent,
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .slice(0, 16000),
+  );
+
+  if (hasNegativeInstallmentText(scopedText)) {
+    return {
+      installmentAvailable: false,
+      installmentText: "Taksit yok",
+    };
+  }
+
+  if (hasPositiveInstallmentText(scopedText)) {
     return {
       installmentAvailable: true,
       installmentText: "Taksit var",
