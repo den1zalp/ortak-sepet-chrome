@@ -1,11 +1,12 @@
 {
   "manifest_version": 3,
   "name": "Ortak Sepet",
-  "version": "1.0.6",
+  "version": "1.0.19",
   "description": "Türkiye ve Birleşik Krallık alışveriş siteleri için ortak alışveriş sepeti.",
   "permissions": [
     "storage",
     "tabs",
+    "activeTab",
     "contextMenus"
   ],
   "host_permissions": [
@@ -27,7 +28,7 @@
     "*://*.vinted.co.uk/*",
     "*://*.argos.co.uk/*",
     "*://*.currys.co.uk/*",
-    "*://uk.diesel.com/*"
+    "*://*.diesel.com/*"
   ],
   "icons": {
     "16": "icons/icon-16.png",
@@ -78,7 +79,7 @@
         "*://*.vinted.co.uk/*",
         "*://*.argos.co.uk/*",
         "*://*.currys.co.uk/*",
-        "*://uk.diesel.com/*"
+        "*://*.diesel.com/*"
       ],
       "js": [
         "content-uk.js"

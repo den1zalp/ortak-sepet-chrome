@@ -2,6 +2,45 @@ importScripts("browser-polyfill.js");
 
 const CART_KEY = "ortakSepetItems";
 const LANGUAGE_KEY = "ortakSepetLanguage";
+const imageDataCache = new Map();
+
+function arrayBufferToBase64(buffer) {
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+
+  for (let offset = 0; offset < bytes.length; offset += 32768) {
+    binary += String.fromCharCode(...bytes.subarray(offset, offset + 32768));
+  }
+
+  return btoa(binary);
+}
+
+async function fetchImageAsDataUrl(imageUrl) {
+  if (!/^https?:\/\//i.test(imageUrl || "")) {
+    throw new Error("Geçersiz görsel adresi.");
+  }
+
+  if (imageDataCache.has(imageUrl)) {
+    return imageDataCache.get(imageUrl);
+  }
+
+  const response = await fetch(imageUrl, {
+    credentials: "omit",
+    cache: "force-cache",
+    referrerPolicy: "no-referrer",
+  });
+
+  if (!response.ok) {
+    throw new Error(`Görsel indirilemedi: ${response.status}`);
+  }
+
+  const buffer = await response.arrayBuffer();
+  const contentType = response.headers.get("content-type")?.split(";")[0] || "image/jpeg";
+  const dataUrl = `data:${contentType};base64,${arrayBufferToBase64(buffer)}`;
+
+  imageDataCache.set(imageUrl, dataUrl);
+  return dataUrl;
+}
 
 async function getCartItems() {
   const result = await browser.storage.local.get(CART_KEY);
@@ -526,6 +565,12 @@ browser.contextMenus.onClicked.addListener((info, tab) => {
 browser.runtime.onMessage.addListener((message) => {
   if (message && message.type === "UPDATE_ALL_PRICES") {
     return updateAllPrices();
+  }
+
+  if (message && message.type === "FETCH_IMAGE_AS_DATA_URL") {
+    return fetchImageAsDataUrl(message.url)
+      .then((dataUrl) => ({ ok: true, dataUrl }))
+      .catch((error) => ({ ok: false, error: error.message }));
   }
 
   return false;

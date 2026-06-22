@@ -19,10 +19,10 @@ const cartItemsEl = document.getElementById("cartItems");
 const totalPriceEl = document.getElementById("totalPrice");
 const selectedTotalPriceEl = document.getElementById("selectedTotalPrice");
 const itemCountEl = document.getElementById("itemCount");
-const languageSelect = document.getElementById("languageSelect");
+const languageToggleBtn = document.getElementById("languageToggleBtn");
+const languageControlEl = document.getElementById("languageControl");
 const themeToggleBtn = document.getElementById("themeToggleBtn");
 const appSubtitleEl = document.getElementById("appSubtitle");
-const languageLabelEl = document.getElementById("languageLabel");
 const itemCountLabelEl = document.getElementById("itemCountLabel");
 const totalPriceLabelEl = document.getElementById("totalPriceLabel");
 const selectedTotalPriceLabelEl = document.getElementById("selectedTotalPriceLabel");
@@ -32,16 +32,18 @@ const I18N = {
   tr: {
     appSubtitle: "Alışverişte ortak sepetiniz",
     language: "Dil",
+    switchToEnglish: "İngilizceye Geç",
+    switchToTurkish: "Türkçeye Geç",
     enableDarkMode: "Karanlık Mod",
     enableLightMode: "Aydınlık Mod",
     addCurrentProduct: "Bu Ürünü Ekle",
-    categorizeProducts: "Ürünleri Kategorize Et",
-    removeCategories: "Kategorileri Sil",
-    installmentProducts: "Taksit / Finance Olanlar",
-    removeInstallmentGrouping: "Taksit/Finance Gruplamasını Kaldır",
-    updateAllPrices: "Tüm Fiyatları Güncelle",
+    categorizeProducts: "Kategorize Et",
+    removeCategories: "Kategorileri Kaldır",
+    installmentProducts: "Taksit / Finance",
+    removeInstallmentGrouping: "Taksit Grubunu Kaldır",
+    updateAllPrices: "Fiyatları Güncelle",
     updating: "Güncelleniyor...",
-    exportCsv: "CSV / Excel Olarak Dışa Aktar",
+    exportCsv: "CSV / Excel",
     compactView: "Kompakt Görünüm",
     normalView: "Normal Görünüm",
     countryGrouping: "Ülkeye Göre Grupla",
@@ -137,16 +139,18 @@ const I18N = {
   en: {
     appSubtitle: "Your shared shopping basket",
     language: "Language",
+    switchToEnglish: "Switch to English",
+    switchToTurkish: "Switch to Turkish",
     enableDarkMode: "Dark Mode",
     enableLightMode: "Light Mode",
     addCurrentProduct: "Add This Product",
-    categorizeProducts: "Categorise Products",
+    categorizeProducts: "Categorise",
     removeCategories: "Remove Categories",
-    installmentProducts: "With Instalments / Finance",
-    removeInstallmentGrouping: "Remove Instalment / Finance Grouping",
-    updateAllPrices: "Refresh All Prices",
+    installmentProducts: "Instalments / Finance",
+    removeInstallmentGrouping: "Remove Finance Group",
+    updateAllPrices: "Refresh Prices",
     updating: "Updating...",
-    exportCsv: "Export as CSV / Excel",
+    exportCsv: "CSV / Excel",
     compactView: "Compact View",
     normalView: "Normal View",
     countryGrouping: "Group by Country",
@@ -365,19 +369,41 @@ function applyTheme() {
     : translate("enableDarkMode");
 }
 
+function applyLanguageToggle() {
+  const isEnglish = currentLanguage === "en";
+  const label = isEnglish
+    ? translate("switchToTurkish")
+    : translate("switchToEnglish");
+
+  languageToggleBtn.classList.toggle("is-english", isEnglish);
+  languageControlEl.classList.toggle("is-english", isEnglish);
+  languageToggleBtn.setAttribute("aria-label", label);
+  languageToggleBtn.setAttribute("aria-pressed", String(isEnglish));
+  languageToggleBtn.title = label;
+}
+
+function setActionButtonLabel(button, label) {
+  const labelElement = button.querySelector(".action-label");
+
+  if (labelElement) {
+    labelElement.textContent = label;
+  } else {
+    button.textContent = label;
+  }
+}
+
 function applyStaticTranslations() {
   document.documentElement.lang = currentLanguage;
   appSubtitleEl.textContent = translate("appSubtitle");
-  languageLabelEl.textContent = translate("language");
-  addCurrentProductBtn.textContent = translate("addCurrentProduct");
-  updateAllPricesBtn.textContent = translate("updateAllPrices");
-  exportCsvBtn.textContent = translate("exportCsv");
+  setActionButtonLabel(addCurrentProductBtn, translate("addCurrentProduct"));
+  setActionButtonLabel(updateAllPricesBtn, translate("updateAllPrices"));
+  setActionButtonLabel(exportCsvBtn, translate("exportCsv"));
   clearCartBtn.textContent = translate("clearCart");
   itemCountLabelEl.textContent = translate("itemCount");
   totalPriceLabelEl.textContent = translate("total");
   selectedTotalPriceLabelEl.textContent = translate("selectedTotal");
   cartTitleEl.textContent = translate("cart");
-  languageSelect.value = currentLanguage;
+  applyLanguageToggle();
   applyTheme();
 }
 
@@ -419,9 +445,11 @@ function applyCompactMode(isCompact) {
   document.body.classList.toggle("compact-mode", Boolean(isCompact));
   if (compactViewBtn) {
     compactViewBtn.classList.toggle("is-active", Boolean(isCompact));
-    compactViewBtn.textContent = isCompact
+    const label = isCompact
       ? translate("normalView")
       : translate("compactView");
+    compactViewBtn.setAttribute("aria-label", label);
+    compactViewBtn.title = label;
   }
 }
 
@@ -1094,8 +1122,29 @@ function createCartItemElement(item) {
 
   const image = document.createElement("img");
   image.className = "cart-image";
-  image.src = item.image || "";
   image.alt = "";
+  image.referrerPolicy = "no-referrer";
+
+  let imageFallbackAttempted = false;
+  image.addEventListener("error", async () => {
+    if (imageFallbackAttempted || !item.image) return;
+    imageFallbackAttempted = true;
+
+    try {
+      const response = await browser.runtime.sendMessage({
+        type: "FETCH_IMAGE_AS_DATA_URL",
+        url: item.image,
+      });
+
+      if (response?.ok && response.dataUrl) {
+        image.src = response.dataUrl;
+      }
+    } catch {
+      // Görsel kullanılamıyorsa boş görsel alanı korunur.
+    }
+  });
+
+  image.src = item.image || "";
 
   const info = document.createElement("div");
   info.className = "cart-info";
@@ -1392,18 +1441,24 @@ async function renderCart() {
   totalPriceEl.textContent = calculateTotal(items);
   selectedTotalPriceEl.textContent = calculateSelectedTotal(items);
 
-  categorizeProductsBtn.textContent =
-    viewMode === "category" ? translate("removeCategories") : translate("categorizeProducts");
+  setActionButtonLabel(
+    categorizeProductsBtn,
+    viewMode === "category" ? translate("removeCategories") : translate("categorizeProducts"),
+  );
 
-  installmentProductsBtn.textContent =
+  setActionButtonLabel(
+    installmentProductsBtn,
     viewMode === "installment"
       ? translate("removeInstallmentGrouping")
-      : translate("installmentProducts");
+      : translate("installmentProducts"),
+  );
 
-  countryGroupingBtn.textContent =
+  const countryGroupingLabel =
     viewMode === "country"
       ? translate("removeCountryGrouping")
       : translate("countryGrouping");
+  countryGroupingBtn.setAttribute("aria-label", countryGroupingLabel);
+  countryGroupingBtn.title = countryGroupingLabel;
 
   countryGroupingBtn.classList.toggle("is-active", viewMode === "country");
   categorizeProductsBtn.classList.toggle("is-active", viewMode === "category");
@@ -1467,6 +1522,150 @@ function normalizeUrl(url) {
   }
 }
 
+function loadDataUrlImage(dataUrl) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = reject;
+    image.src = dataUrl;
+  });
+}
+
+function findNonWhiteBounds(canvas) {
+  const context = canvas.getContext("2d", { willReadFrequently: true });
+  if (!context) return null;
+
+  const { width, height } = canvas;
+  const pixels = context.getImageData(0, 0, width, height).data;
+  let minX = width;
+  let minY = height;
+  let maxX = -1;
+  let maxY = -1;
+
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const index = (y * width + x) * 4;
+      const red = pixels[index];
+      const green = pixels[index + 1];
+      const blue = pixels[index + 2];
+      const alpha = pixels[index + 3];
+      const isWhite = red > 242 && green > 242 && blue > 242;
+
+      if (alpha < 20 || isWhite) continue;
+
+      minX = Math.min(minX, x);
+      minY = Math.min(minY, y);
+      maxX = Math.max(maxX, x);
+      maxY = Math.max(maxY, y);
+    }
+  }
+
+  if (maxX < minX || maxY < minY) return null;
+
+  const paddingX = Math.round((maxX - minX + 1) * 0.08);
+  const paddingY = Math.round((maxY - minY + 1) * 0.05);
+
+  return {
+    left: Math.max(0, minX - paddingX),
+    top: Math.max(0, minY - paddingY),
+    right: Math.min(width, maxX + paddingX + 1),
+    bottom: Math.min(height, maxY + paddingY + 1),
+  };
+}
+
+async function cropCapturedProductImage(dataUrl, captureRect) {
+  const sourceImage = await loadDataUrlImage(dataUrl);
+  const scaleX = sourceImage.naturalWidth / captureRect.viewportWidth;
+  const scaleY = sourceImage.naturalHeight / captureRect.viewportHeight;
+  const visibleLeft = Math.max(0, captureRect.left);
+  const visibleTop = Math.max(0, captureRect.top);
+  const visibleRight = Math.min(
+    captureRect.viewportWidth,
+    captureRect.left + captureRect.width,
+  );
+  const visibleBottom = Math.min(
+    captureRect.viewportHeight,
+    captureRect.top + captureRect.height,
+  );
+  const sourceWidth = Math.max(1, (visibleRight - visibleLeft) * scaleX);
+  const sourceHeight = Math.max(1, (visibleBottom - visibleTop) * scaleY);
+  const sourceLeft = visibleLeft * scaleX;
+  const sourceTop = visibleTop * scaleY;
+  const analysisScale = Math.min(600 / sourceWidth, 600 / sourceHeight, 1);
+  const analysisCanvas = document.createElement("canvas");
+  analysisCanvas.width = Math.max(1, Math.round(sourceWidth * analysisScale));
+  analysisCanvas.height = Math.max(1, Math.round(sourceHeight * analysisScale));
+  const analysisContext = analysisCanvas.getContext("2d");
+
+  if (!analysisContext) return "";
+
+  analysisContext.drawImage(
+    sourceImage,
+    sourceLeft,
+    sourceTop,
+    sourceWidth,
+    sourceHeight,
+    0,
+    0,
+    analysisCanvas.width,
+    analysisCanvas.height,
+  );
+
+  const contentBounds = findNonWhiteBounds(analysisCanvas);
+  const trimLeftRatio = contentBounds ? contentBounds.left / analysisCanvas.width : 0;
+  const trimTopRatio = contentBounds ? contentBounds.top / analysisCanvas.height : 0;
+  const trimRightRatio = contentBounds ? contentBounds.right / analysisCanvas.width : 1;
+  const trimBottomRatio = contentBounds ? contentBounds.bottom / analysisCanvas.height : 1;
+  const trimmedSourceLeft = sourceLeft + sourceWidth * trimLeftRatio;
+  const trimmedSourceTop = sourceTop + sourceHeight * trimTopRatio;
+  const trimmedSourceWidth = Math.max(1, sourceWidth * (trimRightRatio - trimLeftRatio));
+  const trimmedSourceHeight = Math.max(1, sourceHeight * (trimBottomRatio - trimTopRatio));
+  const maxWidth = 320;
+  const maxHeight = 420;
+  const outputScale = Math.min(
+    maxWidth / trimmedSourceWidth,
+    maxHeight / trimmedSourceHeight,
+    1,
+  );
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(trimmedSourceWidth * outputScale));
+  canvas.height = Math.max(1, Math.round(trimmedSourceHeight * outputScale));
+
+  const context = canvas.getContext("2d");
+  if (!context) return "";
+
+  context.fillStyle = "#ffffff";
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  context.drawImage(
+    sourceImage,
+    trimmedSourceLeft,
+    trimmedSourceTop,
+    trimmedSourceWidth,
+    trimmedSourceHeight,
+    0,
+    0,
+    canvas.width,
+    canvas.height,
+  );
+
+  return canvas.toDataURL("image/jpeg", 0.82);
+}
+
+async function captureProductImage(activeTab, product) {
+  if (!product?.imageCaptureRect || !activeTab?.windowId) return "";
+
+  try {
+    const screenshot = await browser.tabs.captureVisibleTab(activeTab.windowId, {
+      format: "jpeg",
+      quality: 85,
+    });
+
+    return await cropCapturedProductImage(screenshot, product.imageCaptureRect);
+  } catch {
+    return "";
+  }
+}
+
 async function addCurrentProduct() {
   setStatus(translate("readingProduct"));
 
@@ -1491,6 +1690,12 @@ async function addCurrentProduct() {
       setStatus(response?.error || translate("productReadFailed"));
       return;
     }
+
+    const capturedImage = await captureProductImage(activeTab, response.product);
+    if (capturedImage) {
+      response.product.image = capturedImage;
+    }
+    delete response.product.imageCaptureRect;
 
     const items = await getCartItems();
     const viewMode = await getViewMode();
@@ -1690,7 +1895,7 @@ async function updateAllPrices() {
   countryGroupingBtn.disabled = true;
   compactViewBtn.disabled = true;
 
-  updateAllPricesBtn.textContent = translate("updating");
+  setActionButtonLabel(updateAllPricesBtn, translate("updating"));
   setStatus(translate("pricesUpdating"));
 
   try {
@@ -1718,7 +1923,7 @@ async function updateAllPrices() {
     countryGroupingBtn.disabled = false;
     compactViewBtn.disabled = false;
 
-    updateAllPricesBtn.textContent = translate("updateAllPrices");
+    setActionButtonLabel(updateAllPricesBtn, translate("updateAllPrices"));
     await renderCart();
   }
 }
@@ -1923,8 +2128,8 @@ exportCsvBtn.addEventListener("click", exportCartAsCsv);
 countryGroupingBtn.addEventListener("click", toggleCountryGrouping);
 compactViewBtn.addEventListener("click", toggleCompactMode);
 clearCartBtn.addEventListener("click", clearCart);
-languageSelect.addEventListener("change", async () => {
-  await setLanguage(languageSelect.value);
+languageToggleBtn.addEventListener("click", async () => {
+  await setLanguage(currentLanguage === "tr" ? "en" : "tr");
   applyStaticTranslations();
   await renderCart();
 });
