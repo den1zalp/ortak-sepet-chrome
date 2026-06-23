@@ -230,9 +230,20 @@ function findN11InstallmentInfo() {
   );
 
   if (
-    /taksit secenekleri/i.test(joinedText) ||
+    /bu urune taksit uygulanmiyor|taksit uygulanmiyor|taksit yok|taksit yapilamaz|taksit uygulanmaz|taksit secenegi bulunmamaktadir/i.test(
+      joinedText,
+    )
+  ) {
+    return {
+      installmentAvailable: false,
+      installmentText: "Taksit yok",
+    };
+  }
+
+  if (
     /\d+\s*aya?\s*varan\s*taksit/i.test(joinedText) ||
     /\d+\s*taksit/i.test(joinedText) ||
+    /taksit miktari|taksitli toplam tutar/i.test(joinedText) ||
     /baslayan taksit/i.test(joinedText) ||
     /taksit firsati/i.test(joinedText)
   ) {
@@ -244,24 +255,13 @@ function findN11InstallmentInfo() {
 
   if (
     /alisveris kredisi/i.test(joinedText) &&
-    !/taksit secenekleri|\d+\s*taksit|aya varan taksit|baslayan taksit/i.test(
+    !/\d+\s*taksit|aya varan taksit|baslayan taksit|taksit miktari|taksitli toplam tutar/i.test(
       joinedText,
     )
   ) {
     return {
       installmentAvailable: false,
       installmentText: "Taksit bilgisi bulunamadı",
-    };
-  }
-
-  if (
-    /taksit yok|taksit yapilamaz|taksit uygulanmaz|taksit secenegi bulunmamaktadir/i.test(
-      joinedText,
-    )
-  ) {
-    return {
-      installmentAvailable: false,
-      installmentText: "Taksit yok",
     };
   }
 
@@ -468,7 +468,7 @@ function findInstallmentInfo() {
   function isNegativeInstallmentText(text) {
     const normalized = normalizeInstallmentText(text);
 
-    return /taksit yok|taksit yapilamaz|taksit uygulanmaz|taksit secenegi bulunmamaktadir|taksit bulunmamaktadir|kredi kartina taksit yok|kredi karti taksiti yok/i.test(
+    return /bu urune taksit uygulanmiyor|taksit uygulanmiyor|taksit yok|taksit yapilamaz|taksit uygulanmaz|taksit secenegi bulunmamaktadir|taksit bulunmamaktadir|kredi kartina taksit yok|kredi karti taksiti yok/i.test(
       normalized,
     );
   }
@@ -2620,6 +2620,77 @@ function findJeansLabMainPrice() {
   return candidates[0]?.text || "";
 }
 
+function findJeansLabPriceFromPriceNodes() {
+  const candidates = Array.from(
+    document.querySelectorAll(
+      "[class*='price'], [class*='Price'], [class*='sale'], [class*='Sale'], [id*='price'], [id*='Price']",
+    ),
+  )
+    .map((element) => {
+      const text = cleanText(
+        [
+          element.textContent,
+          element.getAttribute?.("content"),
+          element.getAttribute?.("aria-label"),
+          element.getAttribute?.("title"),
+        ].join(" "),
+      );
+
+      if (!text || text.length > 220) return null;
+
+      const normalized = normalizeInstallmentText(text);
+      if (/taksit|kargo|teslimat|beden|renk|stok/i.test(normalized)) return null;
+
+      const style = window.getComputedStyle(element);
+      const className = String(element.className || "");
+      const textDecoration = `${style.textDecorationLine} ${style.textDecoration}`;
+
+      if (/line-through|strike|old|original|was|regular/i.test(`${className} ${textDecoration}`)) {
+        return null;
+      }
+
+      const prices = extractTryPriceCandidates(text.replace(/(TL|₺)(?=\d)/gi, "$1 "));
+      if (prices.length === 0) return null;
+
+      let score = 0;
+      if (/sale|discount|current|final|price/i.test(className)) score += 160;
+      if (prices.length === 1) score += 100;
+
+      return {
+        text: prices[prices.length - 1].text,
+        score,
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => b.score - a.score);
+
+  return candidates[0]?.text || "";
+}
+
+function findJeansLabPriceFromPageText() {
+  const bodyText = cleanText(document.body?.innerText || document.body?.textContent || "");
+  if (!bodyText) return "";
+
+  const productTopText = bodyText
+    .split(/Ürün Bilgileri|Urun Bilgileri|Teslimat ve İade|Teslimat ve Iade|Taksit Seçenekleri|Taksit Secenekleri/i)[0]
+    .replace(/(TL|₺)(?=\d)/gi, "$1 ");
+  const topCandidates = extractTryPriceCandidates(productTopText);
+
+  if (topCandidates.length > 0) {
+    return topCandidates[topCandidates.length - 1].text;
+  }
+
+  const pageCandidates = extractTryPriceCandidates(
+    bodyText
+      .replace(/(TL|₺)(?=\d)/gi, "$1 ")
+      .replace(/Taksit Sayısı.*$/i, ""),
+  );
+
+  if (pageCandidates.length === 0) return "";
+
+  return pageCandidates[pageCandidates.length - 1].text;
+}
+
 function findJeansLabMainImage() {
   const title = cleanText(getText("h1"));
   const normalizedTitle = normalizeForBasicSearch(title);
@@ -2704,6 +2775,8 @@ function parseJeansLab() {
       cleanText(document.title),
     price:
       cleanPrice(mainPrice) ||
+      cleanPrice(findJeansLabPriceFromPriceNodes()) ||
+      cleanPrice(findJeansLabPriceFromPageText()) ||
       cleanPrice(getAttr("meta[property='product:price:amount']", "content")) ||
       cleanPrice(getAttr("meta[property='og:price:amount']", "content")) ||
       cleanPrice(getFirstText(["[class*='price']", "[class*='Price']"])),
@@ -2868,20 +2941,42 @@ function getProductFromPage() {
   return normalizeProduct(product);
 }
 
+function wait(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function waitForProductFromPage(maxWaitMs = 2200) {
+  const host = window.location.hostname;
+
+  if (!host.includes("jeanslab")) {
+    return getProductFromPage();
+  }
+
+  const startedAt = Date.now();
+  let product = getProductFromPage();
+
+  while ((!product.title || !product.price) && Date.now() - startedAt < maxWaitMs) {
+    await wait(350);
+    product = getProductFromPage();
+  }
+
+  return product;
+}
+
 browser.runtime.onMessage.addListener((message) => {
   if (message.type === "GET_PRODUCT") {
-    const product = getProductFromPage();
+    return waitForProductFromPage().then((product) => {
+      if (!product.title) {
+        return {
+          ok: false,
+          error: "Ürün adı okunamadı.",
+        };
+      }
 
-    if (!product.title) {
-      return Promise.resolve({
-        ok: false,
-        error: "Ürün adı okunamadı.",
-      });
-    }
-
-    return Promise.resolve({
-      ok: true,
-      product,
+      return {
+        ok: true,
+        product,
+      };
     });
   }
 });

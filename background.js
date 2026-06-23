@@ -342,7 +342,14 @@ async function waitForTabComplete(tabId, timeoutMs = 30000) {
   });
 }
 
-async function readProductFromTabWithRetry(tabId, attempts = 10, waitMs = 900) {
+async function readProductFromTabWithRetry(tabId, options = {}) {
+  const {
+    attempts = 10,
+    waitMs = 900,
+    acceptTitleOnly = false,
+  } = options;
+  let lastPartialProduct = null;
+
   for (let attempt = 1; attempt <= attempts; attempt++) {
     try {
       const response = await browser.tabs.sendMessage(tabId, {
@@ -358,11 +365,27 @@ async function readProductFromTabWithRetry(tabId, attempts = 10, waitMs = 900) {
       ) {
         return response.product;
       }
+
+      if (
+        acceptTitleOnly &&
+        response &&
+        response.ok &&
+        response.product &&
+        response.product.title
+      ) {
+        lastPartialProduct = response.product;
+      }
     } catch {
       // content.js henüz hazır olmayabilir.
     }
 
-    await delay(waitMs);
+    if (attempt < attempts) {
+      await delay(waitMs);
+    }
+  }
+
+  if (lastPartialProduct) {
+    return lastPartialProduct;
   }
 
   throw new Error("Ürün bilgisi veya fiyat okunamadı.");
@@ -394,6 +417,63 @@ function mergeInstallmentText(freshProduct, currentItem) {
     : freshProduct.installmentText;
 }
 
+function getUpdateProfile(item) {
+  const source = `${item?.site || ""} ${item?.url || ""}`.toLocaleLowerCase("tr-TR");
+
+  if (source.includes("jeanslab")) {
+    return {
+      tabTimeoutMs: 15000,
+      initialDelayMs: 400,
+      attempts: 2,
+      waitMs: 300,
+      acceptTitleOnly: true,
+    };
+  }
+
+  if (source.includes("diesel")) {
+    return {
+      tabTimeoutMs: 15000,
+      initialDelayMs: 500,
+      attempts: 4,
+      waitMs: 450,
+      acceptTitleOnly: false,
+    };
+  }
+
+  if (
+    source.includes("zara") ||
+    source.includes("bershka") ||
+    source.includes("hm.com") ||
+    source.includes("h&m")
+  ) {
+    return {
+      tabTimeoutMs: 15000,
+      initialDelayMs: 650,
+      attempts: 6,
+      waitMs: 450,
+      acceptTitleOnly: false,
+    };
+  }
+
+  if (source.includes("amazon")) {
+    return {
+      tabTimeoutMs: 18000,
+      initialDelayMs: 800,
+      attempts: 8,
+      waitMs: 600,
+      acceptTitleOnly: false,
+    };
+  }
+
+  return {
+    tabTimeoutMs: 15000,
+    initialDelayMs: 600,
+    attempts: 6,
+    waitMs: 500,
+    acceptTitleOnly: false,
+  };
+}
+
 async function updateSingleItem(item) {
   if (!item.url) {
     return {
@@ -410,15 +490,21 @@ async function updateSingleItem(item) {
   let tab = null;
 
   try {
+    const updateProfile = getUpdateProfile(item);
+
     tab = await browser.tabs.create({
       url: item.url,
       active: false,
     });
 
-    await waitForTabComplete(tab.id);
-    await delay(1200);
+    await waitForTabComplete(tab.id, updateProfile.tabTimeoutMs);
+    await delay(updateProfile.initialDelayMs);
 
-    const freshProduct = await readProductFromTabWithRetry(tab.id);
+    const freshProduct = await readProductFromTabWithRetry(tab.id, {
+      attempts: updateProfile.attempts,
+      waitMs: updateProfile.waitMs,
+      acceptTitleOnly: updateProfile.acceptTitleOnly,
+    });
 
     const oldPrice = item.price || null;
     const keepManualPrice = item.manualPrice === true;
@@ -531,7 +617,7 @@ async function updateAllPrices() {
     }
 
     await saveCartItems(updatedItems);
-    await delay(700);
+    await delay(250);
   }
 
   await notifyProgress({

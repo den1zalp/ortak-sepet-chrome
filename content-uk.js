@@ -404,14 +404,70 @@ function findMainImage() {
 }
 
 
-function findFinanceInfo() {
-  const paymentElementsText = Array.from(
-    document.querySelectorAll(
-      "[class*='klarna'], [class*='Klarna'], [class*='payment'], [class*='Payment'], [class*='finance'], [class*='Finance'], [data-testid*='payment'], [data-testid*='klarna']",
-    ),
-  )
-    .map((element) => element.textContent || "")
-    .join(" ");
+function getElementSearchText(element) {
+  if (!element) return "";
+
+  return cleanText(
+    [
+      element.textContent || "",
+      element.getAttribute?.("aria-label") || "",
+      element.getAttribute?.("title") || "",
+      element.getAttribute?.("data-testid") || "",
+      element.getAttribute?.("data-test-id") || "",
+      element.getAttribute?.("data-key") || "",
+      element.getAttribute?.("data-client-id") || "",
+      element.getAttribute?.("class") || "",
+      element.getAttribute?.("id") || "",
+    ].join(" "),
+  );
+}
+
+function getPaymentRelatedText() {
+  const paymentSelector = [
+    "klarna-placement",
+    "[class*='klarna']",
+    "[class*='Klarna']",
+    "[class*='payment']",
+    "[class*='Payment']",
+    "[class*='finance']",
+    "[class*='Finance']",
+    "[id*='klarna']",
+    "[id*='payment']",
+    "[id*='finance']",
+    "[data-testid*='payment']",
+    "[data-testid*='klarna']",
+    "[data-test-id*='payment']",
+    "[data-test-id*='klarna']",
+    "[data-key*='klarna']",
+    "[data-client-id*='klarna']",
+  ].join(", ");
+
+  const parts = [
+    document.body?.innerText || "",
+    document.body?.textContent || "",
+  ];
+
+  function collectFromRoot(root, depth = 0) {
+    if (!root || depth > 4) return;
+
+    try {
+      root.querySelectorAll(paymentSelector).forEach((element) => {
+        parts.push(getElementSearchText(element));
+      });
+
+      root.querySelectorAll("*").forEach((element) => {
+        if (element.shadowRoot) {
+          parts.push(element.shadowRoot.textContent || "");
+          collectFromRoot(element.shadowRoot, depth + 1);
+        }
+      });
+    } catch {
+      // Some roots may not support querySelectorAll in all contexts.
+    }
+  }
+
+  collectFromRoot(document);
+
   const iframeText = Array.from(document.querySelectorAll("iframe"))
     .map((iframe) =>
       [
@@ -421,14 +477,14 @@ function findFinanceInfo() {
       ].join(" "),
     )
     .join(" ");
-  const bodyText = cleanText(
-    [
-      document.body?.innerText || "",
-      document.body?.textContent || "",
-      paymentElementsText,
-      iframeText,
-    ].join(" "),
-  );
+
+  parts.push(iframeText);
+
+  return cleanText(parts.join(" "));
+}
+
+function findFinanceInfo() {
+  const bodyText = getPaymentRelatedText();
   const normalized = normalizeForSearch(bodyText);
 
   const negativeFinance = /finance not available|credit not available|not eligible for finance|pay monthly unavailable/i.test(normalized);
@@ -442,13 +498,15 @@ function findFinanceInfo() {
 
   if (window.location.hostname.includes("diesel")) {
     const dieselPaymentMatch = bodyText.match(
-      /make\s+(\d+)\s+payments?\s+of\s+(£\s?[\d,]+(?:\.\d{2})?).*?klarna/i,
+      /make\s+(\d+)\s+payments?\s+of\s*(£\s?[\d,]+(?:\.\d{2})?)/i,
     );
+    const hasDieselPaymentPlan =
+      Boolean(dieselPaymentMatch) ||
+      /pay\s+in\s+\d+/i.test(bodyText) ||
+      /interest[-\s]?free\s+payments?/i.test(bodyText);
     const hasDieselKlarna =
-      /klarna/i.test(bodyText) &&
-      /make\s+\d+\s+payments?|interest[-\s]?free\s+payments?|pay\s+in\s+\d+/i.test(
-        bodyText,
-      );
+      (/klarna/i.test(bodyText) && hasDieselPaymentPlan) ||
+      Boolean(dieselPaymentMatch);
 
     if (dieselPaymentMatch || hasDieselKlarna) {
       return {
@@ -487,6 +545,25 @@ function findFinanceInfo() {
     installmentAvailable: false,
     installmentText: "Finance information not found",
   };
+}
+
+function wait(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function waitForDieselFinanceInfo(maxWaitMs = 1800) {
+  const startedAt = Date.now();
+  let latestInfo = findFinanceInfo();
+
+  while (
+    latestInfo.installmentAvailable !== true &&
+    Date.now() - startedAt < maxWaitMs
+  ) {
+    await wait(300);
+    latestInfo = findFinanceInfo();
+  }
+
+  return latestInfo;
 }
 
 function getDefaultShippingInfoForSite() {
@@ -1178,6 +1255,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         }
 
         product.image = (await createDieselImageDataUrl()) || product.image;
+
+        const dieselFinanceInfo = await waitForDieselFinanceInfo();
+        product.installmentAvailable = dieselFinanceInfo.installmentAvailable;
+        product.installmentText = dieselFinanceInfo.installmentText;
       }
 
       if (!product.title) {
