@@ -118,6 +118,10 @@ function cleanPrice(rawPrice) {
 function getSiteName() {
   const host = window.location.hostname.replace("www.", "");
 
+  if (host.includes("zara")) return "Zara";
+  if (host.includes("bershka")) return "Bershka";
+  if (host.includes("hm.com")) return "H&M";
+  if (host.includes("jeanslab")) return "JeansLab";
   if (host.includes("trendyol")) return "Trendyol";
   if (host.includes("hepsiburada")) return "Hepsiburada";
   if (host.includes("n11")) return "n11";
@@ -389,8 +393,49 @@ function findTrendyolInstallmentInfo() {
   return null;
 }
 
+function findJeansLabInstallmentInfo() {
+  const rawText = cleanText(
+    [
+      document.body?.innerText,
+      document.body?.textContent,
+      document.querySelector("[class*='Accordion']")?.textContent,
+      document.querySelector("[class*='accordion']")?.textContent,
+    ]
+      .filter(Boolean)
+      .join(" "),
+  );
+
+  const normalized = normalizeInstallmentText(rawText);
+
+  const hasInstallmentSection =
+    /taksit secenekleri/i.test(normalized) ||
+    /taksit sayisi/i.test(normalized) ||
+    /taksit miktari/i.test(normalized) ||
+    /taksitli toplam tutar/i.test(normalized);
+
+  const hasInstallmentRows =
+    /taksit sayisi.*taksit miktari.*taksitli toplam tutar/i.test(normalized) &&
+    /\d+\s*[\d.]+,\d{2}\s*tl/i.test(normalized);
+
+  if (hasInstallmentSection || hasInstallmentRows) {
+    return {
+      installmentAvailable: true,
+      installmentText: "Taksit var",
+    };
+  }
+
+  return {
+    installmentAvailable: false,
+    installmentText: "Taksit bilgisi bulunamadı",
+  };
+}
+
 function findInstallmentInfo() {
   const host = window.location.hostname;
+
+  if (host.includes("jeanslab")) {
+    return findJeansLabInstallmentInfo();
+  }
 
   if (host.includes("trendyol")) {
     const trendyolInstallmentInfo = findTrendyolInstallmentInfo();
@@ -563,7 +608,11 @@ function getDefaultShippingInfoForSite() {
   if (
     host.includes("trendyol") ||
     host.includes("hepsiburada") ||
-    host.includes("n11")
+    host.includes("n11") ||
+    host.includes("zara") ||
+    host.includes("bershka") ||
+    host.includes("hm.com") ||
+    host.includes("jeanslab")
   ) {
     return {
       shippingAvailable: false,
@@ -648,6 +697,17 @@ function findShippingInfo() {
 
   function shouldUseResult(result) {
     if (!result) return false;
+
+    if (
+      result.shippingConfidence === "generic" &&
+      (host.includes("zara") ||
+        host.includes("bershka") ||
+        host.includes("hm.com") ||
+        host.includes("jeanslab"))
+    ) {
+      return false;
+    }
+
     if (result.freeShipping) return true;
     if (result.shippingText === "Kargo ücretli olabilir") return true;
 
@@ -2104,6 +2164,19 @@ function getFirstText(selectors) {
   return "";
 }
 
+function getFirstTextFromAll(selectors) {
+  for (const selector of selectors) {
+    const elements = Array.from(document.querySelectorAll(selector));
+
+    for (const element of elements) {
+      const text = cleanText(element.textContent);
+      if (text) return text;
+    }
+  }
+
+  return "";
+}
+
 function getFirstAttr(selectors, attr) {
   for (const selector of selectors) {
     const value = cleanText(getAttr(selector, attr));
@@ -2249,6 +2322,396 @@ function findSiteMainImage(options = {}) {
   );
 }
 
+function findFashionMainPrice(options = {}) {
+  const {
+    titleSelectors = ["h1"],
+    minLeftRatio = 0.35,
+    maxLeftRatio = 0.98,
+    maxDistanceBelowTitle = 850,
+    excludeRegex = /taksit|kargo|teslimat|kampanya|sepet|beden|renk|model|stok|favori|değerlendirme|degerlendirme|yorum|ölçü|olcu/i,
+  } = options;
+
+  const titleElement = titleSelectors
+    .map((selector) => document.querySelector(selector))
+    .find(Boolean);
+
+  const titleRect = titleElement ? titleElement.getBoundingClientRect() : null;
+
+  const candidates = Array.from(
+    document.querySelectorAll("span, div, p, strong, b, ins"),
+  )
+    .filter((element) => {
+      if (!isVisibleElement(element)) return false;
+
+      const text = cleanText(element.textContent);
+
+      if (!looksLikeTryPrice(text)) return false;
+      if (hasChildWithPriceText(element)) return false;
+      if (text.length > 90) return false;
+      if (excludeRegex.test(text)) return false;
+
+      const rect = element.getBoundingClientRect();
+
+      if (rect.left < window.innerWidth * minLeftRatio) return false;
+      if (rect.left > window.innerWidth * maxLeftRatio) return false;
+
+      if (titleRect) {
+        if (rect.top < titleRect.top - 220) return false;
+        if (rect.top > titleRect.bottom + maxDistanceBelowTitle) return false;
+      }
+
+      return true;
+    })
+    .map((element) => {
+      const rect = element.getBoundingClientRect();
+      const style = window.getComputedStyle(element);
+      const fontSize = Number.parseFloat(style.fontSize) || 0;
+      const fontWeight = Number.parseInt(style.fontWeight, 10) || 400;
+      const className = String(element.className || "");
+      const text = cleanText(element.textContent);
+      const textDecoration = `${style.textDecorationLine} ${style.textDecoration}`;
+
+      let score = 0;
+
+      score += fontSize * 18;
+      score += fontWeight / 55;
+      score += Math.max(0, 130 - text.length);
+
+      if (titleRect) {
+        const distanceFromTitle = Math.abs(rect.top - titleRect.bottom);
+        score += Math.max(0, 360 - distanceFromTitle);
+      }
+
+      if (rect.left > window.innerWidth * 0.55) score += 120;
+      if (/current|sale|final|discount|price/i.test(className)) score += 80;
+      if (/line-through|strike|old|original|was|regular/i.test(`${className} ${textDecoration}`)) {
+        score -= 450;
+      }
+
+      return {
+        text,
+        score,
+      };
+    })
+    .sort((a, b) => b.score - a.score);
+
+  return candidates[0]?.text || "";
+}
+
+function parseZara() {
+  const mainPrice = findFashionMainPrice({
+    titleSelectors: ["h1", "[data-qa-action='product-name']", "[class*='product-detail'] h1"],
+    minLeftRatio: 0.45,
+    maxLeftRatio: 0.95,
+    maxDistanceBelowTitle: 520,
+  });
+
+  return {
+    site: "Zara",
+    title:
+      getFirstTextFromAll([
+        "h1",
+        "[data-qa-action='product-name']",
+        "[class*='product-name']",
+        "[class*='ProductName']",
+        "[class*='product-detail'] h1",
+      ]) ||
+      cleanText(getAttr("meta[property='og:title']", "content")) ||
+      cleanText(document.title),
+    price:
+      cleanPrice(getFirstTextFromAll([
+        ".product-detail-info__price",
+        ".product-detail-info__price-amount",
+        ".price-current__amount",
+        ".money-amount__main",
+      ])) ||
+      cleanPrice(mainPrice) ||
+      cleanPrice(getAttr("meta[property='product:price:amount']", "content")) ||
+      cleanPrice(getAttr("meta[property='og:price:amount']", "content")) ||
+      cleanPrice(getFirstText(["[class*='price']", "[class*='Price']"])),
+    image:
+      findSiteMainImage({
+        preferLeftSide: true,
+        minWidth: 180,
+        minHeight: 220,
+        cdnRegex: /zara|static|product|media|image|contents/i,
+      }) || getAttr("meta[property='og:image']", "content"),
+    url: window.location.href,
+  };
+}
+
+function parseBershka() {
+  const mainPrice = findFashionMainPrice({
+    titleSelectors: ["h1", "[class*='product-title']", "[class*='ProductTitle']"],
+    minLeftRatio: 0.55,
+    maxLeftRatio: 0.98,
+    maxDistanceBelowTitle: 620,
+  });
+
+  return {
+    site: "Bershka",
+    title:
+      getFirstTextFromAll([
+        "h1",
+        "[class*='product-title']",
+        "[class*='ProductTitle']",
+        "[class*='product-name']",
+        "[class*='ProductName']",
+      ]) ||
+      cleanText(getAttr("meta[property='og:title']", "content")) ||
+      cleanText(document.title),
+    price:
+      cleanPrice(getFirstTextFromAll([
+        ".product-detail-info__price",
+        ".price-elem.product-detail-info__price",
+        ".current-price-elem-cxc",
+      ])) ||
+      cleanPrice(mainPrice) ||
+      cleanPrice(getAttr("meta[property='product:price:amount']", "content")) ||
+      cleanPrice(getAttr("meta[property='og:price:amount']", "content")) ||
+      cleanPrice(getFirstText(["[class*='price']", "[class*='Price']"])),
+    image:
+      findSiteMainImage({
+        preferLeftSide: true,
+        minWidth: 180,
+        minHeight: 220,
+        cdnRegex: /bershka|static|product|media|image|contents/i,
+      }) || getAttr("meta[property='og:image']", "content"),
+    url: window.location.href,
+  };
+}
+
+function parseHm() {
+  const mainPrice = findFashionMainPrice({
+    titleSelectors: ["h1", "[class*='ProductName']", "[class*='product-name']"],
+    minLeftRatio: 0.45,
+    maxLeftRatio: 0.98,
+    maxDistanceBelowTitle: 760,
+  });
+
+  return {
+    site: "H&M",
+    title:
+      getFirstTextFromAll([
+        "h1",
+        "[class*='ProductName']",
+        "[class*='product-name']",
+        "[class*='ProductTitle']",
+        "[class*='product-title']",
+      ]) ||
+      cleanText(getAttr("meta[property='og:title']", "content")) ||
+      cleanText(document.title),
+    price:
+      cleanPrice(mainPrice) ||
+      cleanPrice(getAttr("meta[property='product:price:amount']", "content")) ||
+      cleanPrice(getAttr("meta[property='og:price:amount']", "content")) ||
+      cleanPrice(getFirstText(["[class*='price']", "[class*='Price']"])),
+    image:
+      findSiteMainImage({
+        preferLeftSide: true,
+        minWidth: 170,
+        minHeight: 220,
+        cdnRegex: /hm|hennes|product|media|image|assets|akamai/i,
+      }) || getAttr("meta[property='og:image']", "content"),
+    url: window.location.href,
+  };
+}
+
+function findJeansLabMainPrice() {
+  const titleElement =
+    document.querySelector("h1") ||
+    document.querySelector("[class*='product-name']") ||
+    document.querySelector("[class*='ProductName']");
+
+  const titleRect = titleElement ? titleElement.getBoundingClientRect() : null;
+  const priceElements = Array.from(
+    document.querySelectorAll("span, div, p, strong, b"),
+  ).filter((element) => {
+    if (!isVisibleElement(element)) return false;
+
+    const text = cleanText(element.textContent);
+    if (!looksLikeTryPrice(text)) return false;
+    if (text.length > 140) return false;
+
+    const rect = element.getBoundingClientRect();
+
+    if (rect.left < window.innerWidth * 0.45) return false;
+    if (rect.left > window.innerWidth * 0.99) return false;
+
+    if (titleRect) {
+      if (rect.top < titleRect.top - 80) return false;
+      if (rect.top > titleRect.bottom + 320) return false;
+    }
+
+    return true;
+  });
+
+  const struckPriceItems = priceElements
+    .map((element) => {
+      const style = window.getComputedStyle(element);
+      const className = String(element.className || "");
+      const textDecoration = `${style.textDecorationLine} ${style.textDecoration}`;
+
+      if (!/line-through|strike/i.test(`${className} ${textDecoration}`)) {
+        return null;
+      }
+
+      const prices = extractTryPriceCandidates(cleanText(element.textContent));
+      if (prices.length === 0) return null;
+
+      return {
+        value: prices[0].value,
+        rect: element.getBoundingClientRect(),
+      };
+    })
+    .filter(Boolean);
+
+  const candidates = priceElements
+    .map((element) => {
+      const text = cleanText(element.textContent);
+      const normalizedPriceText = text.replace(/(TL|₺)(?=\d)/gi, "$1 ");
+      const prices = extractTryPriceCandidates(normalizedPriceText);
+      if (prices.length === 0) return null;
+
+      const rect = element.getBoundingClientRect();
+      const style = window.getComputedStyle(element);
+      const className = String(element.className || "");
+      const textDecoration = `${style.textDecorationLine} ${style.textDecoration}`;
+      const isStruck = /line-through|strike/i.test(`${className} ${textDecoration}`);
+
+      if (isStruck) return null;
+
+      const fontSize = Number.parseFloat(style.fontSize) || 0;
+      const fontWeight = Number.parseInt(style.fontWeight, 10) || 400;
+      const selectedPrice = prices[prices.length - 1];
+      const isSinglePrice = prices.length === 1;
+      const followsStruckPrice = struckPriceItems.some((item) => {
+        const sameColumn = Math.abs(rect.left - item.rect.left) < 80;
+        const belowOldPrice = rect.top >= item.rect.top - 4 && rect.top <= item.rect.top + 80;
+        const differentPrice = Math.abs(selectedPrice.value - item.value) > 0.01;
+
+        return sameColumn && belowOldPrice && differentPrice;
+      });
+
+      let score = 0;
+
+      score += fontSize * 16;
+      score += fontWeight / 50;
+      score += Math.max(0, 120 - text.length);
+
+      if (isSinglePrice) score += 260;
+      if (prices.length > 1) score += 80;
+      if (followsStruckPrice) score += 1200;
+      if (/MuiTypography|price|Price/i.test(className)) score += 80;
+
+      if (titleRect) {
+        const distanceFromTitle = Math.abs(rect.top - titleRect.bottom);
+        score += Math.max(0, 260 - distanceFromTitle);
+      }
+
+      return {
+        text: selectedPrice.text,
+        score,
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => b.score - a.score);
+
+  return candidates[0]?.text || "";
+}
+
+function findJeansLabMainImage() {
+  const title = cleanText(getText("h1"));
+  const normalizedTitle = normalizeForBasicSearch(title);
+
+  const candidates = Array.from(document.querySelectorAll("img"))
+    .filter((image) => {
+      if (!isVisibleElement(image)) return false;
+
+      const src = image.currentSrc || image.src || image.getAttribute("src") || "";
+      const alt = image.getAttribute("alt") || "";
+
+      if (!src) return false;
+      if (!/img-jeanslab\.mncdn\.com/i.test(src)) return false;
+      if (/img-jeanslab-test|JeansLab125|logo|banner/i.test(src)) return false;
+      if (/logo|banner/i.test(alt)) return false;
+
+      const rect = image.getBoundingClientRect();
+
+      if (rect.width < 150 || rect.height < 150) return false;
+
+      return true;
+    })
+    .map((image) => {
+      const src = image.currentSrc || image.src || image.getAttribute("src") || "";
+      const alt = cleanText(image.getAttribute("alt") || "");
+      const normalizedAlt = normalizeForBasicSearch(alt);
+      const rect = image.getBoundingClientRect();
+
+      let score = 0;
+
+      score += rect.width + rect.height;
+
+      if (rect.left > window.innerWidth * 0.08 && rect.left < window.innerWidth * 0.65) {
+        score += 260;
+      }
+
+      if (rect.top < window.innerHeight * 0.9) {
+        score += 160;
+      }
+
+      if (/\/base\/originals\//i.test(src)) {
+        score += 180;
+      }
+
+      if (/-0\.(jpg|jpeg|png|webp)/i.test(src)) {
+        score += 220;
+      }
+
+      if (
+        normalizedTitle &&
+        normalizedAlt &&
+        (normalizedTitle.includes(normalizedAlt) ||
+          normalizedAlt.includes(normalizedTitle))
+      ) {
+        score += 260;
+      }
+
+      return {
+        src,
+        score,
+      };
+    })
+    .sort((a, b) => b.score - a.score);
+
+  return candidates[0]?.src || "";
+}
+
+function parseJeansLab() {
+  const mainPrice = findJeansLabMainPrice();
+
+  return {
+    site: "JeansLab",
+    title:
+      getFirstTextFromAll([
+        "h1",
+        "[class*='product-name']",
+        "[class*='ProductName']",
+        "[class*='product-title']",
+        "[class*='ProductTitle']",
+      ]) ||
+      cleanText(getAttr("meta[property='og:title']", "content")) ||
+      cleanText(document.title),
+    price:
+      cleanPrice(mainPrice) ||
+      cleanPrice(getAttr("meta[property='product:price:amount']", "content")) ||
+      cleanPrice(getAttr("meta[property='og:price:amount']", "content")) ||
+      cleanPrice(getFirstText(["[class*='price']", "[class*='Price']"])),
+    image: findJeansLabMainImage(),
+    url: window.location.href,
+  };
+}
+
 function parseItopya() {
   const mainPrice = findSiteMainPrice({
     titleSelectors: ["h1", "[class*='product'] h1", "[class*='Product'] h1"],
@@ -2368,7 +2831,15 @@ function getProductFromPage() {
 
   let product = null;
 
-  if (host.includes("trendyol")) {
+  if (host.includes("zara")) {
+    product = parseZara();
+  } else if (host.includes("bershka")) {
+    product = parseBershka();
+  } else if (host.includes("hm.com")) {
+    product = parseHm();
+  } else if (host.includes("jeanslab")) {
+    product = parseJeansLab();
+  } else if (host.includes("trendyol")) {
     product = parseTrendyol();
   } else if (host.includes("hepsiburada")) {
     product = parseHepsiburada();
