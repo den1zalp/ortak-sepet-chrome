@@ -1,11 +1,10 @@
 {
   "manifest_version": 3,
   "name": "Ortak Sepet",
-  "version": "1.1.9",
+  "version": "1.3.2",
   "description": "Türkiye ve Birleşik Krallık alışveriş siteleri için ortak alışveriş sepeti.",
   "permissions": [
     "storage",
-    "tabs",
     "activeTab",
     "contextMenus"
   ],
@@ -32,7 +31,11 @@
     "*://*.vinted.co.uk/*",
     "*://*.argos.co.uk/*",
     "*://*.currys.co.uk/*",
-    "*://*.diesel.com/*"
+    "*://*.diesel.com/*",
+    "*://*.temu.com/*",
+    "*://*.aliexpress.com/*",
+    "*://*.sephora.com.tr/*",
+    "*://*.sephora.co.uk/*"
   ],
   "icons": {
     "16": "icons/icon-16.png",
@@ -72,10 +75,30 @@
         "*://*.idefix.com/*",
         "*://*.dr.com.tr/*",
         "*://*.itopya.com/*",
-        "*://*.incehesap.com/*"
+        "*://*.incehesap.com/*",
+        "*://*.sephora.com.tr/*"
       ],
       "js": [
         "browser-polyfill.js",
+        "content/shared/core.js",
+        "content/parsers/trendyol.js",
+        "content/parsers/hepsiburada.js",
+        "content/parsers/n11.js",
+        "content/parsers/amazon-tr.js",
+        "content/parsers/teknosa.js",
+        "content/parsers/vatan.js",
+        "content/parsers/mediamarkt.js",
+        "content/parsers/pazarama.js",
+        "content/parsers/idefix.js",
+        "content/parsers/fashion-shared.js",
+        "content/parsers/zara.js",
+        "content/parsers/bershka.js",
+        "content/parsers/hm.js",
+        "content/parsers/jeanslab.js",
+        "content/parsers/itopya.js",
+        "content/parsers/incehesap.js",
+        "content/parsers/sephora-tr.js",
+        "content/parsers/registry.js",
         "content.js"
       ],
       "run_at": "document_idle"
@@ -87,9 +110,24 @@
         "*://*.vinted.co.uk/*",
         "*://*.argos.co.uk/*",
         "*://*.currys.co.uk/*",
-        "*://*.diesel.com/*"
+        "*://*.diesel.com/*",
+        "*://*.temu.com/*",
+        "*://*.aliexpress.com/*",
+        "*://*.sephora.co.uk/*"
       ],
       "js": [
+        "content-uk/shared/core.js",
+        "content-uk/parsers/amazon-uk.js",
+        "content-uk/parsers/ebay-uk.js",
+        "content-uk/parsers/vinted-uk.js",
+        "content-uk/parsers/argos-uk.js",
+        "content-uk/parsers/currys-uk.js",
+        "content-uk/parsers/diesel-uk.js",
+        "content-uk/parsers/aliexpress-uk.js",
+        "content-uk/parsers/temu-uk.js",
+        "content-uk/shared/marketplace.js",
+        "content-uk/parsers/sephora-uk.js",
+        "content-uk/parsers/registry.js",
         "content-uk.js"
       ],
       "run_at": "document_idle"
