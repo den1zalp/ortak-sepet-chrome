@@ -88,12 +88,38 @@ function normalizeUrl(url) {
   }
 }
 
+function currencySymbolForCurrency(currency) {
+  switch (currency) {
+    case "GBP": return "£";
+    case "USD": return "$";
+    case "EUR": return "€";
+    case "TRY": return "TL";
+    case "RUB": return "₽";
+    case "UAH": return "₴";
+    case "INR": return "₹";
+    case "KRW": return "₩";
+    case "JPY":
+    case "CNY": return "¥";
+    default: return currency || "TL";
+  }
+}
+
+function regionForCurrency(currency) {
+  return ["TRY", "RUB", "UAH"].includes(currency) ? "TR" : "UK";
+}
+
 function detectCurrencyFromPrice(priceText) {
   const text = String(priceText || "");
 
-  if (/£|GBP/i.test(text)) {
-    return "GBP";
-  }
+  if (/£|\bGBP\b/i.test(text)) return "GBP";
+  if (/₺|\bTRY\b|\bTL\b/i.test(text)) return "TRY";
+  if (/€|\bEUR\b/i.test(text)) return "EUR";
+  if (/\$|\bUSD\b/i.test(text)) return "USD";
+  if (/₽|\bRUB\b/i.test(text)) return "RUB";
+  if (/₴|\bUAH\b/i.test(text)) return "UAH";
+  if (/₹|\bINR\b/i.test(text)) return "INR";
+  if (/₩|\bKRW\b/i.test(text)) return "KRW";
+  if (/¥|\bJPY\b|\bCNY\b/i.test(text)) return "JPY";
 
   return "TRY";
 }
@@ -139,8 +165,8 @@ async function addProductToCart(product) {
 
     existingItem.image = product.image || existingItem.image;
     existingItem.currency = product.currency || detectCurrencyFromPrice(existingItem.price);
-    existingItem.currencySymbol = product.currencySymbol || (existingItem.currency === "GBP" ? "£" : "TL");
-    existingItem.region = product.region || existingItem.region || (existingItem.currency === "GBP" ? "UK" : "TR");
+    existingItem.currencySymbol = product.currencySymbol || currencySymbolForCurrency(existingItem.currency);
+    existingItem.region = product.region || existingItem.region || regionForCurrency(existingItem.currency);
     existingItem.installmentAvailable = product.installmentAvailable;
     existingItem.installmentText = product.installmentText;
     existingItem.shippingAvailable = product.shippingAvailable;
@@ -161,8 +187,8 @@ async function addProductToCart(product) {
     id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`,
     ...product,
     currency: productCurrency,
-    currencySymbol: product.currencySymbol || (productCurrency === "GBP" ? "£" : "TL"),
-    region: product.region || (productCurrency === "GBP" ? "UK" : "TR"),
+    currencySymbol: product.currencySymbol || currencySymbolForCurrency(productCurrency),
+    region: product.region || regionForCurrency(productCurrency),
     quantity: 1,
     selected: true,
     category: null,
